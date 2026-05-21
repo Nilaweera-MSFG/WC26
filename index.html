@@ -7,6 +7,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -15,18 +16,13 @@
 </head>
 <body>
   <div id="root"></div>
-
   <script type="text/babel">
-    const { useState, useEffect } = React;
+    const { useState, useEffect, useCallback } = React;
 
-    // ─── STORAGE (localStorage) ───────────────────────────────────────────────
-    // DEVELOPER NOTE: Replace these two functions with calls to your own
-    // backend API or database (e.g. Azure Table Storage, Supabase, Firebase)
-    // to persist data across devices. localStorage only saves per-browser.
-    const storage = {
-      get: (key) => { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : null; } catch { return null; } },
-      set: (key, val) => { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} },
-    };
+    // ─── SUPABASE ─────────────────────────────────────────────────────────────
+    const SUPABASE_URL = "https://kmavclegdxssujusxtzd.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImttYXZjbGVnZHhzc3VqdXN4dHpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzNzYyMjUsImV4cCI6MjA5NDk1MjIyNX0.J170aXs73Kk4E9z1zNgYs9YtEJzOnmnQQaP2eMNjZk4";
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     const DEADLINE = new Date("2026-06-11T19:00:00Z");
     const ADMIN_PASSWORD = "mulberry2026"; // ← Change before going live!
@@ -198,31 +194,91 @@
       .bar-bg { flex: 1; background: #f0eaf8; border-radius: 4px; height: 7px; overflow: hidden; }
       .bar-fill { height: 100%; border-radius: 4px; }
       .tabs { display: flex; gap: 8px; margin-top: 12px; }
+      .spinner { display: flex; justify-content: center; align-items: center; padding: 3rem; }
+      .spin { width: 36px; height: 36px; border: 4px solid #e8e0f0; border-top-color: #5c3896; border-radius: 50%; animation: spin 0.8s linear infinite; }
+      @keyframes spin { to { transform: rotate(360deg); } }
     `;
 
     // ─── APP ──────────────────────────────────────────────────────────────────
     function App() {
       const [view, setView] = useState("home");
-      const [users, setUsers] = useState(() => storage.get("wc2026_users") || {});
-      const [results, setResults] = useState(() => storage.get("wc2026_results") || {});
+      const [users, setUsers] = useState([]);
+      const [results, setResults] = useState({});
       const [session, setSession] = useState(null);
       const [adminMode, setAdminMode] = useState(false);
+      const [loading, setLoading] = useState(true);
 
-      const saveUsers = u => { setUsers(u); storage.set("wc2026_users", u); };
-      const saveResults = r => { setResults(r); storage.set("wc2026_results", r); };
+      const fetchData = useCallback(async () => {
+        try {
+          const [{ data: uData }, { data: rData }] = await Promise.all([
+            sb.from("users").select("*"),
+            sb.from("results").select("*"),
+          ]);
+          if (uData) setUsers(uData);
+          if (rData) {
+            const rMap = {};
+            rData.forEach(r => rMap[r.fixture_id] = r.result);
+            setResults(rMap);
+          }
+        } catch (e) { console.error(e); }
+        setLoading(false);
+      }, []);
+
+      useEffect(() => { fetchData(); }, [fetchData]);
+
+      // Real-time subscriptions
+      useEffect(() => {
+        const uSub = sb.channel("users-changes")
+          .on("postgres_changes", { event: "*", schema: "public", table: "users" }, fetchData)
+          .subscribe();
+        const rSub = sb.channel("results-changes")
+          .on("postgres_changes", { event: "*", schema: "public", table: "results" }, fetchData)
+          .subscribe();
+        return () => { sb.removeChannel(uSub); sb.removeChannel(rSub); };
+      }, [fetchData]);
+
+      const saveUser = async (userData) => {
+        await sb.from("users").upsert(userData, { onConflict: "email" });
+        await fetchData();
+      };
+
+      const saveResult = async (fixtureId, result) => {
+        await sb.from("results").upsert({ fixture_id: fixtureId, result, updated_at: new Date().toISOString() }, { onConflict: "fixture_id" });
+        await fetchData();
+      };
+
+      const deleteUser = async (email) => {
+        await sb.from("users").delete().eq("email", email);
+        await fetchData();
+      };
 
       const closed = new Date() >= DEADLINE;
 
-      const scoreUser = preds => {
+      const scoreUser = (preds) => {
         let pts = 0, correct = 0;
-        for (const [fid, pred] of Object.entries(preds))
+        for (const [fid, pred] of Object.entries(preds || {}))
           if (results[fid] && results[fid] === pred) { pts += 3; correct++; }
         return { pts, correct };
       };
 
-      const leaderboard = Object.entries(users)
-        .map(([email, u]) => ({ email, name: u.name, userType: u.userType, yearGroup: u.yearGroup, department: u.department, predictions: u.predictions || {}, ...scoreUser(u.predictions || {}) }))
+      const leaderboard = users
+        .map(u => ({ ...u, predictions: u.predictions || {}, ...scoreUser(u.predictions) }))
         .sort((a, b) => b.pts - a.pts || b.correct - a.correct);
+
+      const sessionUser = session ? users.find(u => u.email === session) : null;
+
+      if (loading) return (
+        <>
+          <style>{css}</style>
+          <div className="app">
+            <div className="header"><div className="header-top">
+              <div className="school-name">Mulberry School for Girls</div>
+              <div className="app-title">World Cup 2026 Predictor ⚽</div>
+            </div><div className="header-accent"/></div>
+            <div className="spinner"><div className="spin"/></div>
+          </div>
+        </>
+      );
 
       return (
         <>
@@ -239,14 +295,14 @@
                   ))}
                 </div>
               </div>
-              <div className="header-accent" />
+              <div className="header-accent"/>
             </div>
             <div className="content">
-              {view==="home" && <HomeView closed={closed} setView={setView} leaderboard={leaderboard} results={results} />}
-              {view==="predict" && <PredictView users={users} saveUsers={saveUsers} session={session} setSession={setSession} closed={closed} />}
-              {view==="fixtures" && <FixturesView results={results} users={leaderboard} />}
-              {view==="leaderboard" && <LeaderboardView leaderboard={leaderboard} results={results} />}
-              {view==="admin" && <AdminView results={results} saveResults={saveResults} adminMode={adminMode} setAdminMode={setAdminMode} users={users} saveUsers={saveUsers} />}
+              {view==="home" && <HomeView closed={closed} setView={setView} leaderboard={leaderboard} results={results}/>}
+              {view==="predict" && <PredictView users={users} saveUser={saveUser} session={session} setSession={setSession} closed={closed} sessionUser={sessionUser}/>}
+              {view==="fixtures" && <FixturesView results={results} leaderboard={leaderboard}/>}
+              {view==="leaderboard" && <LeaderboardView leaderboard={leaderboard} results={results}/>}
+              {view==="admin" && <AdminView results={results} saveResult={saveResult} adminMode={adminMode} setAdminMode={setAdminMode} users={users} saveUser={saveUser} deleteUser={deleteUser}/>}
             </div>
           </div>
         </>
@@ -255,7 +311,6 @@
 
     // ─── HOME ─────────────────────────────────────────────────────────────────
     function HomeView({ closed, setView, leaderboard, results }) {
-      const resultsIn = Object.keys(results).length;
       return (
         <div>
           <div className="card card-accent">
@@ -274,7 +329,7 @@
             </div>
           </div>
           <div className="stat-grid">
-            {[["⚽","72","Group Fixtures"],["👥",leaderboard.length,"Participants"],["📊",`${resultsIn}/72`,"Results In"],["🏅","3 pts","Per Correct Pick"]].map(([icon,val,label]) => (
+            {[["⚽","72","Group Fixtures"],["👥",leaderboard.length,"Participants"],["📊",`${Object.keys(results).length}/72`,"Results In"],["🏅","3 pts","Per Correct Pick"]].map(([icon,val,label]) => (
               <div key={label} className="stat-card">
                 <div style={{fontSize:22,marginBottom:4}}>{icon}</div>
                 <div className="stat-val">{val}</div>
@@ -294,37 +349,32 @@
               ))}
             </div>
           )}
-          <div className="card" style={{background:"#ede8f8",border:"none",marginTop:8}}>
-            <div style={{fontSize:12,color:"#5c3896",fontWeight:600}}>
-              ℹ️ Note: predictions are saved in your browser. For a shared leaderboard across all users, a database integration is required — see developer notes in the code.
-            </div>
-          </div>
         </div>
       );
     }
 
     // ─── PREDICT ──────────────────────────────────────────────────────────────
-    function PredictView({ users, saveUsers, session, setSession, closed }) {
-      const [step, setStep] = useState(session && users[session] ? "form" : "register");
+    function PredictView({ users, saveUser, session, setSession, closed, sessionUser }) {
+      const [step, setStep] = useState(sessionUser ? "form" : "register");
       const [email, setEmail] = useState("");
       const [name, setName] = useState("");
       const [verCode, setVerCode] = useState("");
       const [sentCode, setSentCode] = useState("");
       const [err, setErr] = useState("");
+      const [saving, setSaving] = useState(false);
       const [userType, setUserType] = useState("");
       const [yearGroup, setYearGroup] = useState("");
       const [department, setDepartment] = useState("");
-      const [preds, setPreds] = useState({});
+      const [favTeam, setFavTeam] = useState("");
+      const [preds, setPreds] = useState(sessionUser?.predictions || {});
       const [activeGroup, setActiveGroup] = useState("A");
-      const [submitted, setSubmitted] = useState(false);
 
       useEffect(() => {
-        if (session && users[session]) { setPreds(users[session].predictions || {}); setStep("form"); }
-      }, [session]);
+        if (sessionUser) { setPreds(sessionUser.predictions || {}); setStep("form"); }
+      }, [sessionUser]);
 
       const fetchDisplayName = async (e) => {
         // DEVELOPER INTEGRATION POINT: replace with Microsoft Graph API call
-        // GET https://graph.microsoft.com/v1.0/users/{email} → return displayName
         const local = e.split("@")[0];
         return local.replace(/[._-]/g," ").replace(/\b\w/g,c=>c.toUpperCase()).trim();
       };
@@ -333,7 +383,8 @@
         setErr("");
         const e = email.trim().toLowerCase();
         if (!e.endsWith("@mulberryschoolstrust.org")) { setErr("Please use your @mulberryschoolstrust.org school email."); return; }
-        if (users[e]?.submitted) { setErr("This email has already submitted predictions."); return; }
+        const existing = users.find(u => u.email === e);
+        if (existing?.submitted) { setErr("This email has already submitted predictions."); return; }
         if (!userType) { setErr("Please select Student or Staff."); return; }
         if (userType==="Student" && !yearGroup) { setErr("Please select your year group."); return; }
         if (userType==="Staff" && !department) { setErr("Please select your department."); return; }
@@ -355,17 +406,27 @@
 
       const handleSubmit = async () => {
         if (!allDone) { setErr(`Please predict all 72 fixtures. You've done ${total}/72.`); return; }
+        setSaving(true);
         const e = email.trim().toLowerCase() || session;
-        saveUsers({...users,[e]:{name:name||users[e]?.name,userType,yearGroup,department,predictions:preds,submitted:true}});
-        setSubmitted(true);
+        await saveUser({
+          email: e,
+          name: name || sessionUser?.name,
+          user_type: userType || sessionUser?.user_type,
+          year_group: yearGroup || sessionUser?.year_group,
+          department: department || sessionUser?.department,
+          favourite_team: favTeam || sessionUser?.favourite_team,
+          predictions: preds,
+          submitted: true,
+        });
+        setSaving(false);
       };
 
       if (closed) return <div className="card card-accent"><div style={{fontSize:18,fontWeight:800,color:"#5c3896",marginBottom:8}}>⏰ Submissions Closed</div><p style={{fontSize:14,color:"#555"}}>The deadline has passed. Check the leaderboard!</p></div>;
-      if (submitted||(session&&users[session]?.submitted)) return (
+      if (sessionUser?.submitted) return (
         <div className="card" style={{textAlign:"center",padding:"2rem 1.5rem"}}>
           <div style={{fontSize:40,marginBottom:12}}>✅</div>
           <div style={{fontSize:20,fontWeight:800,color:"#5c3896",marginBottom:8}}>Predictions Locked In!</div>
-          <p style={{fontSize:14,color:"#555",marginBottom:16}}>Thanks <strong>{users[session]?.name}</strong>! Your 72 predictions are saved.</p>
+          <p style={{fontSize:14,color:"#555",marginBottom:16}}>Thanks <strong>{sessionUser.name}</strong>! Your 72 predictions are saved and live on the leaderboard.</p>
           <div className="alert alert-purple">Good luck! 🍀 Check the Fixtures page as results come in.</div>
         </div>
       );
@@ -374,7 +435,7 @@
         <div className="card card-accent">
           <div className="section-title">📧 Register to Predict</div>
           <p style={{fontSize:13,color:"#666",marginBottom:14,lineHeight:1.6}}>You must use your school email. Each email can only submit once.</p>
-          <input className="input" placeholder="yourname@mulberryschoolstrust.org" value={email} onChange={e=>setEmail(e.target.value)} />
+          <input className="input" placeholder="yourname@mulberryschoolstrust.org" value={email} onChange={e=>setEmail(e.target.value)}/>
           <div style={{fontSize:12,color:"#6d6e71",marginBottom:14,marginTop:-6}}>Your display name will be taken from your email address.</div>
           <div style={{fontSize:13,fontWeight:700,color:"#5c3896",marginBottom:8}}>I am a...</div>
           <div style={{display:"flex",gap:8,marginBottom:14}}>
@@ -403,6 +464,13 @@
               </select>
             </>
           )}
+          <div style={{fontSize:13,fontWeight:700,color:"#5c3896",marginBottom:8}}>Favourite team <span style={{fontWeight:400,color:"#aaa"}}>(optional)</span></div>
+          <select className="input" value={favTeam} onChange={e=>setFavTeam(e.target.value)} style={{marginBottom:14}}>
+            <option value="">Select a team...</option>
+            {["Algeria","Argentina","Australia","Austria","Belgium","Bosnia and Herzegovina","Brazil","Canada","Cape Verde","Czechia","Colombia","Croatia","Curacao","DR Congo","Ecuador","Egypt","England","France","Germany","Ghana","Haiti","Iran","Iraq","Ivory Coast","Japan","Jordan","Mexico","Morocco","Netherlands","New Zealand","Norway","Panama","Paraguay","Portugal","Qatar","Saudi Arabia","Scotland","Senegal","South Africa","South Korea","Spain","Sweden","Switzerland","Tunisia","Turkey","Uruguay","USA","Uzbekistan"].map(t=>(
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
           {err && <div className="err">{err}</div>}
           <button className="btn" onClick={handleEmailSubmit}>Send Verification Code →</button>
         </div>
@@ -417,7 +485,7 @@
             <span style={{fontSize:18,fontWeight:800,letterSpacing:3}}>{sentCode}</span>
             <div style={{fontSize:11,marginTop:4,opacity:0.8}}>In production this would be emailed to you.</div>
           </div>
-          <input className="input" placeholder="6-digit code" value={verCode} onChange={e=>setVerCode(e.target.value)} maxLength={6} />
+          <input className="input" placeholder="6-digit code" value={verCode} onChange={e=>setVerCode(e.target.value)} maxLength={6}/>
           {err && <div className="err">{err}</div>}
           <button className="btn" onClick={handleVerify}>Verify & Start Predicting →</button>
         </div>
@@ -428,16 +496,16 @@
           <div className="card">
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
               <div>
-                <div style={{fontWeight:800,fontSize:15,color:"#5c3896"}}>{users[session]?.name||name}'s Predictions</div>
+                <div style={{fontWeight:800,fontSize:15,color:"#5c3896"}}>{sessionUser?.name||name}'s Predictions</div>
                 <div style={{fontSize:13,color:"#6d6e71"}}>{total} of 72 fixtures predicted</div>
               </div>
               <div className="pill" style={allDone?{background:"#e8f5e2",color:"#2a6b15"}:{}}>{allDone?"✅ All done!":`${72-total} remaining`}</div>
             </div>
-            <div className="progress-bar"><div className="progress-fill" style={{width:`${(total/72)*100}%`}} /></div>
+            <div className="progress-bar"><div className="progress-fill" style={{width:`${(total/72)*100}%`}}/></div>
           </div>
           <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
             {Object.keys(GROUPS).map(g=>{
-              const gf=FIXTURES.filter(f=>f.group===g), done=gf.filter(f=>preds[f.id]).length;
+              const gf=FIXTURES.filter(f=>f.group===g),done=gf.filter(f=>preds[f.id]).length;
               return <button key={g} className={`group-tab${activeGroup===g?" active":""}`} onClick={()=>setActiveGroup(g)}>Group {g} {done===gf.length?"✅":`${done}/${gf.length}`}</button>;
             })}
           </div>
@@ -456,8 +524,8 @@
           </div>
           <div style={{marginTop:14}}>
             {err && <div className="err">{err}</div>}
-            <button className={`btn${allDone?" btn-green":" btn-gray"}`} onClick={handleSubmit} disabled={!allDone}>
-              {allDone?"🔒 Lock In My Predictions":`Complete all fixtures first (${total}/72)`}
+            <button className={`btn${allDone?" btn-green":" btn-gray"}`} onClick={handleSubmit} disabled={!allDone||saving}>
+              {saving?"💾 Saving...":allDone?"🔒 Lock In My Predictions":`Complete all fixtures first (${total}/72)`}
             </button>
             <div style={{fontSize:12,color:"#aaa",marginTop:8}}>⚠️ Once submitted, predictions cannot be changed.</div>
           </div>
@@ -466,18 +534,18 @@
     }
 
     // ─── FIXTURES ─────────────────────────────────────────────────────────────
-    function FixturesView({ results, users }) {
+    function FixturesView({ results, leaderboard }) {
       const [filter, setFilter] = useState("All");
       const byDate = {};
       FIXTURES.forEach(f => { if (!byDate[f.date]) byDate[f.date]=[]; byDate[f.date].push(f); });
       const getPredStats = fid => {
         let h=0,d=0,a=0;
-        users.forEach(u=>{const p=u.predictions[fid];if(p==="H")h++;else if(p==="D")d++;else if(p==="A")a++;});
+        leaderboard.forEach(u=>{const p=(u.predictions||{})[fid];if(p==="H")h++;else if(p==="D")d++;else if(p==="A")a++;});
         return {h,d,a,total:h+d+a};
       };
       const formatDate = s => new Date(s+"T12:00:00Z").toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
       const dates = Object.keys(byDate).sort();
-      const filteredDates = filter==="All" ? dates : dates.filter(d=>byDate[d].some(f=>f.group===filter));
+      const filteredDates = filter==="All"?dates:dates.filter(d=>byDate[d].some(f=>f.group===filter));
       return (
         <div>
           <div className="card" style={{marginBottom:12}}>
@@ -497,7 +565,7 @@
               <div key={date}>
                 <div className="date-header">📆 {formatDate(date)}</div>
                 {dayF.map(f=>{
-                  const res=results[f.id], stats=getPredStats(f.id);
+                  const res=results[f.id],stats=getPredStats(f.id);
                   return (
                     <div key={f.id} className="fix-card">
                       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
@@ -510,17 +578,16 @@
                           <span style={{fontSize:10,fontWeight:800,background:"#ede8f8",color:"#5c3896",borderRadius:10,padding:"2px 8px"}}>Group {f.group}</span>
                           <span style={{fontSize:11,color:"#aaa",fontWeight:600}}>🕐 {f.time.replace("+1","")} GMT</span>
                         </div>
-                        {res ? <span className="badge badge-green">{res==="H"?`${f.home} win`:res==="D"?"Draw":`${f.away} win`}</span> : <span className="badge badge-gray">No result yet</span>}
+                        {res?<span className="badge badge-green">{res==="H"?`${f.home} win`:res==="D"?"Draw":`${f.away} win`}</span>:<span className="badge badge-gray">No result yet</span>}
                       </div>
-                      {stats.total>0 && (
+                      {stats.total>0&&(
                         <div style={{marginTop:10,borderTop:"1px solid #f5f0fc",paddingTop:8}}>
                           <div style={{fontSize:11,fontWeight:700,color:"#6d6e71",marginBottom:4,textTransform:"uppercase",letterSpacing:"0.4px"}}>
                             Predictions — {stats.total} participant{stats.total!==1?"s":""}
-                            {res && <span style={{marginLeft:8,color:"#4e9d2d"}}>· {res==="H"?stats.h:res==="D"?stats.d:stats.a} correct ({Math.round(((res==="H"?stats.h:res==="D"?stats.d:stats.a)/stats.total)*100)}%)</span>}
+                            {res&&<span style={{marginLeft:8,color:"#4e9d2d"}}>· {res==="H"?stats.h:res==="D"?stats.d:stats.a} correct ({Math.round(((res==="H"?stats.h:res==="D"?stats.d:stats.a)/stats.total)*100)}%)</span>}
                           </div>
                           {[["H",f.home,stats.h,"#5c3896"],["D","Draw",stats.d,"#f36d21"],["A",f.away,stats.a,"#4e9d2d"]].map(([code,label,count,color])=>{
-                            const pct=stats.total>0?Math.round((count/stats.total)*100):0;
-                            const correct=res&&res===code;
+                            const pct=stats.total>0?Math.round((count/stats.total)*100):0,correct=res&&res===code;
                             return (
                               <div key={code} style={{display:"flex",alignItems:"center",gap:6,marginBottom:3,fontSize:11,color:"#666"}}>
                                 <span style={{minWidth:100,fontWeight:correct?700:400,color:correct?"#4e9d2d":"#666"}}>{label}{correct?" ✅":""}</span>
@@ -546,11 +613,10 @@
       const [filterType, setFilterType] = useState("All");
       const [filterSub, setFilterSub] = useState("All");
       const yearGroups = ["All","Year 7","Year 8","Year 9","Year 10","Year 11","Year 12","Year 13"];
-      const handleTypeChange = t => { setFilterType(t); setFilterSub("All"); };
       const filtered = leaderboard.filter(u => {
         if (filterType==="All") return true;
-        if (filterType==="Student") { if(u.userType!=="Student")return false; if(filterSub!=="All"&&`Year ${u.yearGroup}`!==filterSub)return false; return true; }
-        return u.userType==="Staff";
+        if (filterType==="Student") { if(u.user_type!=="Student")return false; if(filterSub!=="All"&&`Year ${u.year_group}`!==filterSub)return false; return true; }
+        return u.user_type==="Staff";
       });
       return (
         <div>
@@ -562,9 +628,9 @@
             <div style={{marginBottom:12}}>
               <div style={{fontSize:12,fontWeight:700,color:"#6d6e71",textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:6}}>Filter by</div>
               <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
-                {["All","Student","Staff"].map(t=><button key={t} className={`group-tab${filterType===t?" active":""}`} onClick={()=>handleTypeChange(t)}>{t}</button>)}
+                {["All","Student","Staff"].map(t=><button key={t} className={`group-tab${filterType===t?" active":""}`} onClick={()=>{setFilterType(t);setFilterSub("All");}}>{t}</button>)}
               </div>
-              {filterType==="Student" && (
+              {filterType==="Student"&&(
                 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                   {yearGroups.map(y=><button key={y} className={`group-tab${filterSub===y?" active":""}`} style={{fontSize:11}} onClick={()=>setFilterSub(y)}>{y}</button>)}
                 </div>
@@ -578,7 +644,7 @@
                   <div style={{width:30,textAlign:"center",fontSize:i<3?20:14,fontWeight:700,color:"#999"}}>{i===0?"🥇":i===1?"🥈":i===2?"🥉":i+1}</div>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:14,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.name}</div>
-                    <div style={{fontSize:11,color:"#bbb",marginTop:1}}>{u.userType==="Student"?`Student · Year ${u.yearGroup}`:u.userType==="Staff"?`Staff · ${u.department}`:u.email}</div>
+                    <div style={{fontSize:11,color:"#bbb",marginTop:1}}>{u.user_type==="Student"?`Student · Year ${u.year_group}`:u.user_type==="Staff"?`Staff · ${u.department}`:u.email}</div>
                   </div>
                   <div style={{textAlign:"right"}}>
                     <div className="badge">{u.pts} pts</div>
@@ -596,12 +662,12 @@
     }
 
     // ─── ADMIN ────────────────────────────────────────────────────────────────
-    function AdminView({ results, saveResults, adminMode, setAdminMode, users, saveUsers }) {
+    function AdminView({ results, saveResult, adminMode, setAdminMode, users, saveUser, deleteUser }) {
       const [pw, setPw] = useState("");
       const [err, setErr] = useState("");
       const [activeTab, setActiveTab] = useState("results");
       const [activeGroup, setActiveGroup] = useState("A");
-      const [localRes, setLocalRes] = useState({...results});
+      const [saving, setSaving] = useState(false);
       const [saved, setSaved] = useState(false);
       const [search, setSearch] = useState("");
       const [editingUser, setEditingUser] = useState(null);
@@ -611,32 +677,45 @@
       const [subSaved, setSubSaved] = useState(false);
 
       const login = () => { if(pw===ADMIN_PASSWORD){setAdminMode(true);setErr("");}else setErr("Incorrect password."); };
-      const setResult = (fid,val) => { setLocalRes(r=>({...r,[fid]:val})); setSaved(false); };
-      const handleSave = () => { saveResults(localRes); setSaved(true); };
 
-      const handleEditUser = email => { setEditingUser(email); setEditPreds({...users[email].predictions}); setEditGroup("A"); setSubSaved(false); };
-      const handleSaveEdit = () => { saveUsers({...users,[editingUser]:{...users[editingUser],predictions:editPreds}}); setEditingUser(null); setSubSaved(true); setTimeout(()=>setSubSaved(false),3000); };
-      const handleDelete = email => { const u={...users}; delete u[email]; saveUsers(u); setConfirmDelete(null); };
-      const handleUnlock = email => saveUsers({...users,[email]:{...users[email],submitted:false}});
+      const handleSaveResult = async (fid, val) => {
+        setSaved(false);
+        await saveResult(fid, val);
+        setSaved(true);
+        setTimeout(()=>setSaved(false),2000);
+      };
+
+      const handleEditUser = u => { setEditingUser(u.email); setEditPreds({...u.predictions}); setEditGroup("A"); };
+      const handleSaveEdit = async () => {
+        setSaving(true);
+        const u = users.find(x=>x.email===editingUser);
+        await saveUser({...u, predictions: editPreds});
+        setSaving(false); setEditingUser(null); setSubSaved(true);
+        setTimeout(()=>setSubSaved(false),3000);
+      };
+      const handleUnlock = async email => {
+        const u = users.find(x=>x.email===email);
+        await saveUser({...u, submitted: false});
+      };
 
       if (!adminMode) return (
         <div className="card card-accent">
           <div className="section-title">🔧 Admin Panel</div>
           <p style={{fontSize:13,color:"#666",marginBottom:14}}>Enter the admin password to manage the competition.</p>
-          <input className="input" type="password" placeholder="Admin password" value={pw} onChange={e=>setPw(e.target.value)} onKeyDown={e=>e.key==="Enter"&&login()} />
-          {err && <div className="err">{err}</div>}
+          <input className="input" type="password" placeholder="Admin password" value={pw} onChange={e=>setPw(e.target.value)} onKeyDown={e=>e.key==="Enter"&&login()}/>
+          {err&&<div className="err">{err}</div>}
           <button className="btn" onClick={login}>Login →</button>
         </div>
       );
 
       if (editingUser) {
-        const u=users[editingUser], total=Object.keys(editPreds).length;
+        const total=Object.keys(editPreds).length;
         return (
           <div>
             <div className="card card-accent" style={{marginBottom:12}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
                 <div>
-                  <div className="section-title" style={{marginBottom:2}}>✏️ Editing: {u.name}</div>
+                  <div className="section-title" style={{marginBottom:2}}>✏️ Editing: {users.find(u=>u.email===editingUser)?.name}</div>
                   <div style={{fontSize:12,color:"#6d6e71"}}>{editingUser}</div>
                 </div>
                 <button className="btn" style={{background:"#888",padding:"7px 14px",fontSize:13}} onClick={()=>setEditingUser(null)}>← Back</button>
@@ -659,21 +738,21 @@
                     {[["H",`${f.home} win`],["D","Draw"],["A",`${f.away} win`]].map(([c,label])=>(
                       <button key={c} className={`pred-btn${editPreds[f.id]===c?" selected":""}`} style={{fontSize:12,padding:"5px 10px"}} onClick={()=>setEditPreds(p=>({...p,[f.id]:c}))}>{label}</button>
                     ))}
-                    {editPreds[f.id] && <button className="pred-btn" style={{color:"#c00",borderColor:"#f5c0c0",fontSize:11}} onClick={()=>setEditPreds(p=>{const n={...p};delete n[f.id];return n;})}>✕ Clear</button>}
+                    {editPreds[f.id]&&<button className="pred-btn" style={{color:"#c00",borderColor:"#f5c0c0",fontSize:11}} onClick={()=>setEditPreds(p=>{const n={...p};delete n[f.id];return n;})}>✕ Clear</button>}
                   </div>
                 </div>
               ))}
             </div>
             <div style={{marginTop:14,display:"flex",gap:10,alignItems:"center"}}>
-              <button className="btn btn-green" onClick={handleSaveEdit}>💾 Save Changes</button>
+              <button className="btn btn-green" onClick={handleSaveEdit} disabled={saving}>{saving?"Saving...":"💾 Save Changes"}</button>
               <button className="btn" style={{background:"#888"}} onClick={()=>setEditingUser(null)}>Cancel</button>
             </div>
           </div>
         );
       }
 
-      const participantList = Object.entries(users).filter(([email,u])=>
-        !search||u.name?.toLowerCase().includes(search.toLowerCase())||email.toLowerCase().includes(search.toLowerCase())
+      const participantList = users.filter(u=>
+        !search||u.name?.toLowerCase().includes(search.toLowerCase())||u.email?.toLowerCase().includes(search.toLowerCase())
       );
 
       return (
@@ -681,7 +760,7 @@
           <div className="card" style={{marginBottom:12}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <div className="section-title" style={{marginBottom:0}}>🔧 Admin Panel</div>
-              <div className="pill">{Object.keys(users).length} participants</div>
+              <div className="pill">{users.length} participants</div>
             </div>
             <div className="tabs">
               {[["results","⚽ Match Results"],["submissions","👥 Manage Submissions"]].map(([t,label])=>(
@@ -690,14 +769,15 @@
             </div>
           </div>
 
-          {activeTab==="results" && (
+          {activeTab==="results"&&(
             <>
               <div className="card" style={{marginBottom:12}}>
-                <p style={{fontSize:13,color:"#666"}}>Select 1 (home win), X (draw) or 2 (away win) for each match. Save to update the leaderboard.</p>
+                <p style={{fontSize:13,color:"#666"}}>Click a result to save it instantly. The leaderboard and fixtures page update in real time for all users.</p>
+                {saved&&<div className="ok" style={{marginTop:8}}>✅ Result saved!</div>}
               </div>
               <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
                 {Object.keys(GROUPS).map(g=>{
-                  const done=FIXTURES.filter(f=>f.group===g&&localRes[f.id]).length,tot=FIXTURES.filter(f=>f.group===g).length;
+                  const done=FIXTURES.filter(f=>f.group===g&&results[f.id]).length,tot=FIXTURES.filter(f=>f.group===g).length;
                   return <button key={g} className={`group-tab${activeGroup===g?" active":""}`} onClick={()=>setActiveGroup(g)}>Group {g} {done>0?`${done}/${tot}`:""}</button>;
                 })}
               </div>
@@ -708,51 +788,47 @@
                     <div className="fix-label">{FLAGS[f.home]||"🏳"} {f.home} <span style={{color:"#bbb",margin:"0 6px",fontWeight:400}}>vs</span> {FLAGS[f.away]||"🏳"} {f.away}</div>
                     <div className="pred-btns">
                       {[["H",`${f.home} win`],["D","Draw"],["A",`${f.away} win`]].map(([c,label])=>(
-                        <button key={c} className={`pred-btn${localRes[f.id]===c?" selected":""}`} style={{fontSize:12,padding:"5px 10px"}} onClick={()=>setResult(f.id,c)}>{label}</button>
+                        <button key={c} className={`pred-btn${results[f.id]===c?" selected":""}`} style={{fontSize:12,padding:"5px 10px"}} onClick={()=>handleSaveResult(f.id,c)}>{label}</button>
                       ))}
                     </div>
                   </div>
                 ))}
               </div>
-              <div style={{marginTop:14,display:"flex",alignItems:"center",gap:14}}>
-                <button className="btn" onClick={handleSave}>💾 Save & Update</button>
-                {saved && <span className="ok">✅ Saved!</span>}
-              </div>
             </>
           )}
 
-          {activeTab==="submissions" && (
+          {activeTab==="submissions"&&(
             <>
               <div className="card" style={{marginBottom:12}}>
-                <p style={{fontSize:13,color:"#666",marginBottom:10}}>Edit, unlock or delete participant submissions.</p>
-                <input className="input" style={{marginBottom:0}} placeholder="🔍 Search by name or email..." value={search} onChange={e=>setSearch(e.target.value)} />
+                <p style={{fontSize:13,color:"#666",marginBottom:10}}>Edit, unlock or delete participant submissions. Changes save instantly to the database.</p>
+                <input className="input" style={{marginBottom:0}} placeholder="🔍 Search by name or email..." value={search} onChange={e=>setSearch(e.target.value)}/>
               </div>
-              {subSaved && <div className="alert alert-green" style={{marginBottom:12}}>✅ Submission updated.</div>}
+              {subSaved&&<div className="alert alert-green" style={{marginBottom:12}}>✅ Submission updated.</div>}
               {participantList.length===0
                 ? <div className="card" style={{textAlign:"center",color:"#aaa",fontSize:14}}>No participants found.</div>
-                : participantList.map(([email,u])=>(
-                  <div key={email} className="card" style={{marginBottom:8}}>
+                : participantList.map(u=>(
+                  <div key={u.email} className="card" style={{marginBottom:8}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:8}}>
                       <div>
                         <div style={{fontSize:14,fontWeight:700}}>{u.name||"—"}</div>
-                        <div style={{fontSize:12,color:"#6d6e71"}}>{email}</div>
+                        <div style={{fontSize:12,color:"#6d6e71"}}>{u.email}</div>
                         <div style={{fontSize:11,color:"#bbb",marginTop:2}}>
-                          {u.userType==="Student"?`Student · Year ${u.yearGroup}`:u.userType==="Staff"?`Staff · ${u.department}`:"—"}
+                          {u.user_type==="Student"?`Student · Year ${u.year_group}`:u.user_type==="Staff"?`Staff · ${u.department}`:"—"}
                           {" · "}{Object.keys(u.predictions||{}).length}/72 predictions
                           {" · "}<span style={{color:u.submitted?"#4e9d2d":"#f36d21",fontWeight:700}}>{u.submitted?"🔒 Locked":"🔓 Unlocked"}</span>
                         </div>
                       </div>
                       <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                        <button className="btn" style={{padding:"6px 12px",fontSize:12}} onClick={()=>handleEditUser(email)}>✏️ Edit</button>
-                        <button className="btn btn-orange" style={{padding:"6px 12px",fontSize:12}} onClick={()=>handleUnlock(email)}>🔓 Unlock</button>
-                        <button className="btn btn-red" style={{padding:"6px 12px",fontSize:12}} onClick={()=>setConfirmDelete(email)}>🗑 Delete</button>
+                        <button className="btn" style={{padding:"6px 12px",fontSize:12}} onClick={()=>handleEditUser(u)}>✏️ Edit</button>
+                        <button className="btn btn-orange" style={{padding:"6px 12px",fontSize:12}} onClick={()=>handleUnlock(u.email)}>🔓 Unlock</button>
+                        <button className="btn btn-red" style={{padding:"6px 12px",fontSize:12}} onClick={()=>setConfirmDelete(u.email)}>🗑 Delete</button>
                       </div>
                     </div>
-                    {confirmDelete===email && (
+                    {confirmDelete===u.email&&(
                       <div className="alert alert-orange" style={{marginTop:10}}>
                         <div style={{fontWeight:700,marginBottom:6}}>⚠️ Delete {u.name}'s submission? This cannot be undone.</div>
                         <div style={{display:"flex",gap:8}}>
-                          <button className="btn btn-red" style={{padding:"6px 14px",fontSize:12}} onClick={()=>handleDelete(email)}>Yes, delete</button>
+                          <button className="btn btn-red" style={{padding:"6px 14px",fontSize:12}} onClick={()=>{deleteUser(u.email);setConfirmDelete(null);}}>Yes, delete</button>
                           <button className="btn" style={{background:"#888",padding:"6px 14px",fontSize:12}} onClick={()=>setConfirmDelete(null)}>Cancel</button>
                         </div>
                       </div>
@@ -766,7 +842,7 @@
       );
     }
 
-    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
   </script>
 </body>
 </html>
