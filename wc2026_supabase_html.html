@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mulberry School WC2026 Predictor</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #f8f6fc; font-family: 'Nunito', system-ui, sans-serif; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useCallback } = React;
+
+    // ─── SUPABASE ─────────────────────────────────────────────────────────────
+    const SUPABASE_URL = "https://kmavclegdxssujusxtzd.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImttYXZjbGVnZHhzc3VqdXN4dHpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzNzYyMjUsImV4cCI6MjA5NDk1MjIyNX0.J170aXs73Kk4E9z1zNgYs9YtEJzOnmnQQaP2eMNjZk4";
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const DEADLINE = new Date("2026-06-11T19:00:00Z");
+    const ADMIN_PASSWORD = "mulberry2026"; // ← Change before going live!
+
+    const BRAND = {
+      purple:"#5c3896", purpleDark:"#3d2566",
+      green:"#4e9d2d", orange:"#f36d21",
+      yellow:"#fbed1d", pink:"#e70095", gray:"#6d6e71",
+    };
+
+    const GROUPS = {
+      A:{teams:["Mexico","South Africa","South Korea","Czechia"]},
+      B:{teams:["Canada","Bosnia and Herzegovina","Qatar","Switzerland"]},
+      C:{teams:["Brazil","Morocco","Haiti","Scotland"]},
+      D:{teams:["USA","Paraguay","Australia","Turkey"]},
+      E:{teams:["Germany","Curacao","Ivory Coast","Ecuador"]},
+      F:{teams:["Netherlands","Japan","Sweden","Tunisia"]},
+      G:{teams:["Belgium","Egypt","Iran","New Zealand"]},
+      H:{teams:["Spain","Cape Verde","Saudi Arabia","Uruguay"]},
+      I:{teams:["France","Senegal","Iraq","Norway"]},
+      J:{teams:["Argentina","Algeria","Austria","Jordan"]},
+      K:{teams:["Portugal","DR Congo","Uzbekistan","Colombia"]},
+      L:{teams:["England","Croatia","Ghana","Panama"]},
+    };
+
+    const FIXTURES = [
+      {id:1,group:"A",home:"Mexico",away:"South Africa",date:"2026-06-11",time:"19:00"},
+      {id:2,group:"A",home:"South Korea",away:"Czechia",date:"2026-06-11",time:"02:00+1"},
+      {id:3,group:"B",home:"Canada",away:"Bosnia and Herzegovina",date:"2026-06-12",time:"19:00"},
+      {id:4,group:"D",home:"USA",away:"Paraguay",date:"2026-06-12",time:"01:00+1"},
+      {id:5,group:"B",home:"Qatar",away:"Switzerland",date:"2026-06-13",time:"19:00"},
+      {id:6,group:"C",home:"Brazil",away:"Morocco",date:"2026-06-13",time:"23:00"},
+      {id:7,group:"C",home:"Haiti",away:"Scotland",date:"2026-06-13",time:"01:00+1"},
+      {id:8,group:"D",home:"Australia",away:"Turkey",date:"2026-06-13",time:"04:00+1"},
+      {id:9,group:"E",home:"Germany",away:"Curacao",date:"2026-06-14",time:"18:00"},
+      {id:10,group:"F",home:"Netherlands",away:"Japan",date:"2026-06-14",time:"21:00"},
+      {id:11,group:"E",home:"Ivory Coast",away:"Ecuador",date:"2026-06-14",time:"00:00+1"},
+      {id:12,group:"F",home:"Sweden",away:"Tunisia",date:"2026-06-14",time:"04:00+1"},
+      {id:13,group:"H",home:"Spain",away:"Cape Verde",date:"2026-06-15",time:"17:00"},
+      {id:14,group:"G",home:"Belgium",away:"Egypt",date:"2026-06-15",time:"23:00"},
+      {id:15,group:"H",home:"Saudi Arabia",away:"Uruguay",date:"2026-06-15",time:"23:00"},
+      {id:16,group:"G",home:"Iran",away:"New Zealand",date:"2026-06-15",time:"05:00+1"},
+      {id:17,group:"I",home:"France",away:"Senegal",date:"2026-06-16",time:"20:00"},
+      {id:18,group:"I",home:"Iraq",away:"Norway",date:"2026-06-16",time:"23:00"},
+      {id:19,group:"J",home:"Argentina",away:"Algeria",date:"2026-06-16",time:"03:00+1"},
+      {id:20,group:"J",home:"Austria",away:"Jordan",date:"2026-06-16",time:"08:00+1"},
+      {id:21,group:"K",home:"Portugal",away:"DR Congo",date:"2026-06-17",time:"19:00"},
+      {id:22,group:"L",home:"England",away:"Croatia",date:"2026-06-17",time:"22:00"},
+      {id:23,group:"L",home:"Ghana",away:"Panama",date:"2026-06-17",time:"00:00+1"},
+      {id:24,group:"K",home:"Uzbekistan",away:"Colombia",date:"2026-06-17",time:"04:00+1"},
+      {id:25,group:"A",home:"Czechia",away:"South Africa",date:"2026-06-18",time:"17:00"},
+      {id:26,group:"B",home:"Switzerland",away:"Bosnia and Herzegovina",date:"2026-06-18",time:"23:00"},
+      {id:27,group:"B",home:"Canada",away:"Qatar",date:"2026-06-18",time:"02:00+1"},
+      {id:28,group:"A",home:"Mexico",away:"South Korea",date:"2026-06-18",time:"03:00+1"},
+      {id:29,group:"C",home:"Scotland",away:"Morocco",date:"2026-06-19",time:"23:00"},
+      {id:30,group:"D",home:"USA",away:"Australia",date:"2026-06-19",time:"23:00"},
+      {id:31,group:"C",home:"Brazil",away:"Haiti",date:"2026-06-19",time:"02:00+1"},
+      {id:32,group:"D",home:"Turkey",away:"Paraguay",date:"2026-06-19",time:"08:00+1"},
+      {id:33,group:"F",home:"Netherlands",away:"Sweden",date:"2026-06-20",time:"19:00"},
+      {id:34,group:"E",home:"Germany",away:"Ivory Coast",date:"2026-06-20",time:"21:00"},
+      {id:35,group:"E",home:"Ecuador",away:"Curacao",date:"2026-06-20",time:"04:00+1"},
+      {id:36,group:"F",home:"Tunisia",away:"Japan",date:"2026-06-20",time:"06:00+1"},
+      {id:37,group:"H",home:"Spain",away:"Saudi Arabia",date:"2026-06-21",time:"17:00"},
+      {id:38,group:"G",home:"Belgium",away:"Iran",date:"2026-06-21",time:"23:00"},
+      {id:39,group:"H",home:"Uruguay",away:"Cape Verde",date:"2026-06-21",time:"23:00"},
+      {id:40,group:"G",home:"New Zealand",away:"Egypt",date:"2026-06-21",time:"05:00+1"},
+      {id:41,group:"J",home:"Argentina",away:"Austria",date:"2026-06-22",time:"19:00"},
+      {id:42,group:"I",home:"France",away:"Iraq",date:"2026-06-22",time:"22:00"},
+      {id:43,group:"I",home:"Norway",away:"Senegal",date:"2026-06-22",time:"01:00+1"},
+      {id:44,group:"J",home:"Jordan",away:"Algeria",date:"2026-06-22",time:"07:00+1"},
+      {id:45,group:"K",home:"Portugal",away:"Uzbekistan",date:"2026-06-23",time:"19:00"},
+      {id:46,group:"L",home:"England",away:"Ghana",date:"2026-06-23",time:"21:00"},
+      {id:47,group:"L",home:"Panama",away:"Croatia",date:"2026-06-23",time:"00:00+1"},
+      {id:48,group:"K",home:"Colombia",away:"DR Congo",date:"2026-06-23",time:"04:00+1"},
+      {id:49,group:"B",home:"Switzerland",away:"Canada",date:"2026-06-24",time:"23:00"},
+      {id:50,group:"B",home:"Bosnia and Herzegovina",away:"Qatar",date:"2026-06-24",time:"23:00"},
+      {id:51,group:"C",home:"Scotland",away:"Brazil",date:"2026-06-24",time:"23:00"},
+      {id:52,group:"C",home:"Morocco",away:"Haiti",date:"2026-06-24",time:"23:00"},
+      {id:53,group:"A",home:"Czechia",away:"Mexico",date:"2026-06-24",time:"03:00+1"},
+      {id:54,group:"A",home:"South Africa",away:"South Korea",date:"2026-06-24",time:"03:00+1"},
+      {id:55,group:"E",home:"Ecuador",away:"Germany",date:"2026-06-25",time:"21:00"},
+      {id:56,group:"E",home:"Curacao",away:"Ivory Coast",date:"2026-06-25",time:"21:00"},
+      {id:57,group:"F",home:"Japan",away:"Sweden",date:"2026-06-25",time:"01:00+1"},
+      {id:58,group:"F",home:"Tunisia",away:"Netherlands",date:"2026-06-25",time:"01:00+1"},
+      {id:59,group:"D",home:"Turkey",away:"USA",date:"2026-06-25",time:"06:00+1"},
+      {id:60,group:"D",home:"Paraguay",away:"Australia",date:"2026-06-25",time:"06:00+1"},
+      {id:61,group:"I",home:"Norway",away:"France",date:"2026-06-26",time:"20:00"},
+      {id:62,group:"I",home:"Senegal",away:"Iraq",date:"2026-06-26",time:"20:00"},
+      {id:63,group:"H",home:"Cape Verde",away:"Saudi Arabia",date:"2026-06-26",time:"02:00+1"},
+      {id:64,group:"H",home:"Uruguay",away:"Spain",date:"2026-06-26",time:"02:00+1"},
+      {id:65,group:"G",home:"Egypt",away:"Iran",date:"2026-06-26",time:"07:00+1"},
+      {id:66,group:"G",home:"New Zealand",away:"Belgium",date:"2026-06-26",time:"07:00+1"},
+      {id:67,group:"L",home:"Panama",away:"England",date:"2026-06-27",time:"22:00"},
+      {id:68,group:"L",home:"Croatia",away:"Ghana",date:"2026-06-27",time:"22:00"},
+      {id:69,group:"K",home:"Colombia",away:"Portugal",date:"2026-06-27",time:"02:30+1"},
+      {id:70,group:"K",home:"DR Congo",away:"Uzbekistan",date:"2026-06-27",time:"02:30+1"},
+      {id:71,group:"J",home:"Algeria",away:"Austria",date:"2026-06-27",time:"04:00+1"},
+      {id:72,group:"J",home:"Jordan",away:"Argentina",date:"2026-06-27",time:"04:00+1"},
+    ];
+
+    const FLAGS = {
+      Mexico:"🇲🇽","South Africa":"🇿🇦","South Korea":"🇰🇷",Czechia:"🇨🇿",
+      Canada:"🇨🇦","Bosnia and Herzegovina":"🇧🇦",Qatar:"🇶🇦",Switzerland:"🇨🇭",
+      Brazil:"🇧🇷",Morocco:"🇲🇦",Haiti:"🇭🇹",Scotland:"🏴󠁧󠁢󠁳󠁣󠁴󠁿",
+      USA:"🇺🇸",Paraguay:"🇵🇾",Australia:"🇦🇺",Turkey:"🇹🇷",
+      Germany:"🇩🇪",Curacao:"🇨🇼","Ivory Coast":"🇨🇮",Ecuador:"🇪🇨",
+      Netherlands:"🇳🇱",Japan:"🇯🇵",Sweden:"🇸🇪",Tunisia:"🇹🇳",
+      Belgium:"🇧🇪",Egypt:"🇪🇬",Iran:"🇮🇷","New Zealand":"🇳🇿",
+      Spain:"🇪🇸","Cape Verde":"🇨🇻","Saudi Arabia":"🇸🇦",Uruguay:"🇺🇾",
+      France:"🇫🇷",Senegal:"🇸🇳",Iraq:"🇮🇶",Norway:"🇳🇴",
+      Argentina:"🇦🇷",Algeria:"🇩🇿",Austria:"🇦🇹",Jordan:"🇯🇴",
+      Portugal:"🇵🇹","DR Congo":"🇨🇩",Uzbekistan:"🇺🇿",Colombia:"🇨🇴",
+      England:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",Croatia:"🇭🇷",Ghana:"🇬🇭",Panama:"🇵🇦",
+    };
+
+    const css = `
+      .app { max-width: 720px; margin: 0 auto; padding-bottom: 3rem; background: #f8f6fc; min-height: 100vh; }
+      .header { background: #5c3896; color: #fff; border-radius: 0 0 20px 20px; margin-bottom: 1.5rem; overflow: hidden; }
+      .header-top { padding: 1.25rem 1.5rem 0.75rem; }
+      .header-accent { height: 6px; background: linear-gradient(90deg, #4e9d2d 0%, #f36d21 33%, #e70095 66%, #fbed1d 100%); }
+      .school-name { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; opacity: 0.85; margin-bottom: 4px; font-weight: 600; }
+      .app-title { font-size: 24px; font-weight: 800; margin-bottom: 2px; }
+      .app-sub { font-size: 13px; opacity: 0.8; }
+      .nav { display: flex; gap: 6px; margin: 1rem 0 0; flex-wrap: wrap; padding-bottom: 1rem; }
+      .nav-btn { padding: 7px 14px; border-radius: 20px; border: 2px solid rgba(255,255,255,0.4); cursor: pointer; font-size: 13px; font-weight: 700; background: transparent; color: #fff; font-family: inherit; transition: all 0.15s; }
+      .nav-btn:hover { background: rgba(255,255,255,0.15); }
+      .nav-btn.active { background: #fff; color: #5c3896; border-color: #fff; }
+      .content { padding: 0 1rem; }
+      .card { background: #fff; border: 1.5px solid #e8e0f0; border-radius: 14px; padding: 1.1rem 1.25rem; margin-bottom: 12px; }
+      .card-accent { border-left: 5px solid #5c3896; }
+      .section-title { font-size: 15px; font-weight: 800; color: #5c3896; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+      .input { width: 100%; padding: 10px 14px; border-radius: 10px; border: 1.5px solid #d4c8e8; font-size: 14px; margin-bottom: 10px; font-family: inherit; outline: none; }
+      .input:focus { border-color: #5c3896; }
+      .btn { background: #5c3896; color: #fff; border: none; padding: 11px 22px; border-radius: 10px; font-weight: 700; font-size: 14px; cursor: pointer; font-family: inherit; }
+      .btn:hover { background: #3d2566; }
+      .btn-green { background: #4e9d2d; } .btn-green:hover { background: #3a7a20; }
+      .btn-orange { background: #f36d21; } .btn-red { background: #c0392b; }
+      .btn-gray { background: #bbb; cursor: not-allowed; }
+      .err { color: #c0392b; font-size: 13px; margin-bottom: 8px; font-weight: 600; }
+      .ok { color: #4e9d2d; font-size: 13px; font-weight: 600; }
+      .fix-row { padding: 10px 0; border-bottom: 1px solid #f0eaf8; }
+      .fix-row:last-child { border-bottom: none; }
+      .fix-label { font-size: 13px; font-weight: 700; margin-bottom: 7px; color: #333; }
+      .pred-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+      .pred-btn { padding: 5px 10px; border-radius: 8px; border: 2px solid #d4c8e8; background: #fff; color: #888; font-size: 12px; cursor: pointer; font-weight: 700; font-family: inherit; transition: all 0.12s; }
+      .pred-btn:hover { border-color: #5c3896; color: #5c3896; }
+      .pred-btn.selected { border-color: #5c3896; background: #5c3896; color: #fff; }
+      .lb-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid #f5f0fc; }
+      .lb-row:last-child { border-bottom: none; }
+      .lb-row.gold { background: #fffbea; border-radius: 8px; padding: 9px 8px; }
+      .badge { background: #5c3896; color: #fff; border-radius: 20px; padding: 3px 11px; font-size: 12px; font-weight: 700; display: inline-block; }
+      .badge-green { background: #4e9d2d; } .badge-gray { background: #bbb; }
+      .pill { display: inline-block; background: #ede8f8; color: #5c3896; border-radius: 20px; padding: 3px 12px; font-size: 12px; font-weight: 700; }
+      .group-tab { padding: 5px 12px; border-radius: 16px; border: 1.5px solid #d4c8e8; background: #fff; color: #888; font-size: 12px; cursor: pointer; font-weight: 700; font-family: inherit; }
+      .group-tab.active { border-color: #5c3896; background: #5c3896; color: #fff; }
+      .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px,1fr)); gap: 10px; margin: 1rem 0; }
+      .stat-card { background: #fff; border-radius: 12px; padding: 0.85rem 1rem; text-align: center; border: 1.5px solid #e8e0f0; }
+      .stat-val { font-size: 22px; font-weight: 800; color: #5c3896; }
+      .stat-label { font-size: 11px; color: #6d6e71; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+      .progress-bar { background: #e8e0f0; border-radius: 8px; height: 10px; overflow: hidden; margin-top: 10px; }
+      .progress-fill { height: 100%; background: linear-gradient(90deg, #5c3896, #4e9d2d); border-radius: 8px; transition: width 0.3s; }
+      .alert { border-radius: 10px; padding: 10px 14px; font-size: 13px; font-weight: 600; margin-bottom: 10px; }
+      .alert-purple { background: #ede8f8; color: #5c3896; border: 1px solid #d4c8e8; }
+      .alert-green { background: #e8f5e2; color: #2a6b15; border: 1px solid #a5d68a; }
+      .alert-orange { background: #fff3ea; color: #9a4210; border: 1px solid #f9c49a; }
+      .alert-warn { background: #fff9e0; border: 1px solid #f0d060; color: #7a6000; }
+      .date-header { font-size: 13px; font-weight: 800; color: #5c3896; text-transform: uppercase; letter-spacing: 0.8px; padding: 10px 0 6px; border-bottom: 2px solid #ede8f8; margin-bottom: 8px; }
+      .fix-card { background: #fff; border: 1.5px solid #e8e0f0; border-radius: 12px; padding: 10px 14px; margin-bottom: 8px; }
+      .bar-bg { flex: 1; background: #f0eaf8; border-radius: 4px; height: 7px; overflow: hidden; }
+      .bar-fill { height: 100%; border-radius: 4px; }
+      .tabs { display: flex; gap: 8px; margin-top: 12px; }
+      .spinner { display: flex; justify-content: center; align-items: center; padding: 3rem; }
+      .spin { width: 36px; height: 36px; border: 4px solid #e8e0f0; border-top-color: #5c3896; border-radius: 50%; animation: spin 0.8s linear infinite; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+    `;
+
+    // ─── APP ──────────────────────────────────────────────────────────────────
+    function App() {
+      const [view, setView] = useState("home");
+      const [users, setUsers] = useState([]);
+      const [results, setResults] = useState({});
+      const [session, setSession] = useState(null);
+      const [adminMode, setAdminMode] = useState(false);
+      const [loading, setLoading] = useState(true);
+
+      const fetchData = useCallback(async () => {
+        try {
+          const [{ data: uData }, { data: rData }] = await Promise.all([
+            sb.from("users").select("*"),
+            sb.from("results").select("*"),
+          ]);
+          if (uData) setUsers(uData);
+          if (rData) {
+            const rMap = {};
+            rData.forEach(r => rMap[r.fixture_id] = r.result);
+            setResults(rMap);
+          }
+        } catch (e) { console.error(e); }
+        setLoading(false);
+      }, []);
+
+      useEffect(() => { fetchData(); }, [fetchData]);
+
+      // Real-time subscriptions
+      useEffect(() => {
+        const uSub = sb.channel("users-changes")
+          .on("postgres_changes", { event: "*", schema: "public", table: "users" }, fetchData)
+          .subscribe();
+        const rSub = sb.channel("results-changes")
+          .on("postgres_changes", { event: "*", schema: "public", table: "results" }, fetchData)
+          .subscribe();
+        return () => { sb.removeChannel(uSub); sb.removeChannel(rSub); };
+      }, [fetchData]);
+
+      const saveUser = async (userData) => {
+        await sb.from("users").upsert(userData, { onConflict: "email" });
+        await fetchData();
+      };
+
+      const saveResult = async (fixtureId, result) => {
+        await sb.from("results").upsert({ fixture_id: fixtureId, result, updated_at: new Date().toISOString() }, { onConflict: "fixture_id" });
+        await fetchData();
+      };
+
+      const deleteUser = async (email) => {
+        await sb.from("users").delete().eq("email", email);
+        await fetchData();
+      };
+
+      const closed = new Date() >= DEADLINE;
+
+      const scoreUser = (preds) => {
+        let pts = 0, correct = 0;
+        for (const [fid, pred] of Object.entries(preds || {}))
+          if (results[fid] && results[fid] === pred) { pts += 3; correct++; }
+        return { pts, correct };
+      };
+
+      const leaderboard = users
+        .map(u => ({ ...u, predictions: u.predictions || {}, ...scoreUser(u.predictions) }))
+        .sort((a, b) => b.pts - a.pts || b.correct - a.correct);
+
+      const sessionUser = session ? users.find(u => u.email === session) : null;
+
+      if (loading) return (
+        <>
+          <style>{css}</style>
+          <div className="app">
+            <div className="header"><div className="header-top">
+              <div className="school-name">Mulberry School for Girls</div>
+              <div className="app-title">World Cup 2026 Predictor ⚽</div>
+            </div><div className="header-accent"/></div>
+            <div className="spinner"><div className="spin"/></div>
+          </div>
+        </>
+      );
+
+      return (
+        <>
+          <style>{css}</style>
+          <div className="app">
+            <div className="header">
+              <div className="header-top">
+                <div className="school-name">Mulberry School for Girls</div>
+                <div className="app-title">World Cup 2026 Predictor ⚽</div>
+                <div className="app-sub">Predict all 72 group stage fixtures — best score wins!</div>
+                <div className="nav">
+                  {[["home","🏠 Home"],["predict","📝 Predict"],["fixtures","📅 Fixtures"],["leaderboard","🏆 Leaderboard"],["admin","🔧 Admin"]].map(([v,label]) => (
+                    <button key={v} className={`nav-btn${view===v?" active":""}`} onClick={() => setView(v)}>{label}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="header-accent"/>
+            </div>
+            <div className="content">
+              {view==="home" && <HomeView closed={closed} setView={setView} leaderboard={leaderboard} results={results}/>}
+              {view==="predict" && <PredictView users={users} saveUser={saveUser} session={session} setSession={setSession} closed={closed} sessionUser={sessionUser}/>}
+              {view==="fixtures" && <FixturesView results={results} leaderboard={leaderboard}/>}
+              {view==="leaderboard" && <LeaderboardView leaderboard={leaderboard} results={results}/>}
+              {view==="admin" && <AdminView results={results} saveResult={saveResult} adminMode={adminMode} setAdminMode={setAdminMode} users={users} saveUser={saveUser} deleteUser={deleteUser}/>}
+            </div>
+          </div>
+        </>
+      );
+    }
+
+    // ─── HOME ─────────────────────────────────────────────────────────────────
+    function HomeView({ closed, setView, leaderboard, results }) {
+      return (
+        <div>
+          <div className="card card-accent">
+            <div style={{fontSize:19,fontWeight:800,marginBottom:8,color:"#5c3896"}}>Welcome! 🌍</div>
+            <p style={{fontSize:14,color:"#555",lineHeight:1.65,marginBottom:12}}>
+              Predict the result of all 72 FIFA World Cup 2026 group stage matches. Earn <strong>3 points</strong> for every correct result. Highest score wins!
+            </p>
+            {closed
+              ? <div className="alert alert-warn">⏰ Submissions are now <strong>closed</strong> — the tournament has begun!</div>
+              : <div className="alert alert-green">✅ Submissions open until <strong>11 June 2026, 7:00 PM GMT</strong></div>
+            }
+            <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:4}}>
+              {!closed && <button className="btn" onClick={() => setView("predict")}>📝 Submit My Predictions</button>}
+              <button className="btn btn-green" onClick={() => setView("leaderboard")}>🏆 View Leaderboard</button>
+              <button className="btn btn-orange" onClick={() => setView("fixtures")}>📅 View Fixtures</button>
+            </div>
+          </div>
+          <div className="stat-grid">
+            {[["⚽","72","Group Fixtures"],["👥",leaderboard.length,"Participants"],["📊",`${Object.keys(results).length}/72`,"Results In"],["🏅","3 pts","Per Correct Pick"]].map(([icon,val,label]) => (
+              <div key={label} className="stat-card">
+                <div style={{fontSize:22,marginBottom:4}}>{icon}</div>
+                <div className="stat-val">{val}</div>
+                <div className="stat-label">{label}</div>
+              </div>
+            ))}
+          </div>
+          {leaderboard.length > 0 && (
+            <div className="card">
+              <div className="section-title">🏆 Top 3</div>
+              {leaderboard.slice(0,3).map((u,i) => (
+                <div key={u.email} className={`lb-row${i===0?" gold":""}`}>
+                  <span style={{fontSize:20}}>{["🥇","🥈","🥉"][i]}</span>
+                  <span style={{flex:1,fontSize:14,fontWeight:700}}>{u.name}</span>
+                  <span className="badge">{u.pts} pts</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ─── PREDICT ──────────────────────────────────────────────────────────────
+    function PredictView({ users, saveUser, session, setSession, closed, sessionUser }) {
+      const [step, setStep] = useState(sessionUser ? "form" : "register");
+      const [email, setEmail] = useState("");
+      const [name, setName] = useState("");
+      const [verCode, setVerCode] = useState("");
+      const [sentCode, setSentCode] = useState("");
+      const [err, setErr] = useState("");
+      const [saving, setSaving] = useState(false);
+      const [userType, setUserType] = useState("");
+      const [yearGroup, setYearGroup] = useState("");
+      const [department, setDepartment] = useState("");
+      const [favTeam, setFavTeam] = useState("");
+      const [preds, setPreds] = useState(sessionUser?.predictions || {});
+      const [activeGroup, setActiveGroup] = useState("A");
+
+      useEffect(() => {
+        if (sessionUser) { setPreds(sessionUser.predictions || {}); setStep("form"); }
+      }, [sessionUser]);
+
+      const fetchDisplayName = async (e) => {
+        // DEVELOPER INTEGRATION POINT: replace with Microsoft Graph API call
+        const local = e.split("@")[0];
+        return local.replace(/[._-]/g," ").replace(/\b\w/g,c=>c.toUpperCase()).trim();
+      };
+
+      const handleEmailSubmit = async () => {
+        setErr("");
+        const e = email.trim().toLowerCase();
+        if (!e.endsWith("@mulberryschoolstrust.org")) { setErr("Please use your @mulberryschoolstrust.org school email."); return; }
+        const existing = users.find(u => u.email === e);
+        if (existing?.submitted) { setErr("This email has already submitted predictions."); return; }
+        if (!userType) { setErr("Please select Student or Staff."); return; }
+        if (userType==="Student" && !yearGroup) { setErr("Please select your year group."); return; }
+        if (userType==="Staff" && !department) { setErr("Please select your department."); return; }
+        const displayName = await fetchDisplayName(e);
+        setName(displayName);
+        const c = Math.floor(100000+Math.random()*900000).toString();
+        setSentCode(c);
+        setStep("verify");
+      };
+
+      const handleVerify = () => {
+        if (verCode.trim()!==sentCode) { setErr("Incorrect code."); return; }
+        setSession(email.trim().toLowerCase()); setStep("form"); setErr("");
+      };
+
+      const setPred = (fid, val) => setPreds(p => ({...p,[fid]:val}));
+      const total = Object.keys(preds).length;
+      const allDone = total === FIXTURES.length;
+
+      const handleSubmit = async () => {
+        if (!allDone) { setErr(`Please predict all 72 fixtures. You've done ${total}/72.`); return; }
+        setSaving(true);
+        const e = email.trim().toLowerCase() || session;
+        await saveUser({
+          email: e,
+          name: name || sessionUser?.name,
+          user_type: userType || sessionUser?.user_type,
+          year_group: yearGroup || sessionUser?.year_group,
+          department: department || sessionUser?.department,
+          favourite_team: favTeam || sessionUser?.favourite_team,
+          predictions: preds,
+          submitted: true,
+        });
+        setSaving(false);
+      };
+
+      if (closed) return <div className="card card-accent"><div style={{fontSize:18,fontWeight:800,color:"#5c3896",marginBottom:8}}>⏰ Submissions Closed</div><p style={{fontSize:14,color:"#555"}}>The deadline has passed. Check the leaderboard!</p></div>;
+      if (sessionUser?.submitted) return (
+        <div className="card" style={{textAlign:"center",padding:"2rem 1.5rem"}}>
+          <div style={{fontSize:40,marginBottom:12}}>✅</div>
+          <div style={{fontSize:20,fontWeight:800,color:"#5c3896",marginBottom:8}}>Predictions Locked In!</div>
+          <p style={{fontSize:14,color:"#555",marginBottom:16}}>Thanks <strong>{sessionUser.name}</strong>! Your 72 predictions are saved and live on the leaderboard.</p>
+          <div className="alert alert-purple">Good luck! 🍀 Check the Fixtures page as results come in.</div>
+        </div>
+      );
+
+      if (step==="register") return (
+        <div className="card card-accent">
+          <div className="section-title">📧 Register to Predict</div>
+          <p style={{fontSize:13,color:"#666",marginBottom:14,lineHeight:1.6}}>You must use your school email. Each email can only submit once.</p>
+          <input className="input" placeholder="yourname@mulberryschoolstrust.org" value={email} onChange={e=>setEmail(e.target.value)}/>
+          <div style={{fontSize:12,color:"#6d6e71",marginBottom:14,marginTop:-6}}>Your display name will be taken from your email address.</div>
+          <div style={{fontSize:13,fontWeight:700,color:"#5c3896",marginBottom:8}}>I am a...</div>
+          <div style={{display:"flex",gap:8,marginBottom:14}}>
+            {["Student","Staff"].map(t=>(
+              <button key={t} className={`pred-btn${userType===t?" selected":""}`} style={{padding:"8px 20px",fontSize:13}} onClick={()=>{setUserType(t);setYearGroup("");setDepartment("");}}>{t}</button>
+            ))}
+          </div>
+          {userType==="Student" && (
+            <>
+              <div style={{fontSize:13,fontWeight:700,color:"#5c3896",marginBottom:8}}>Year group</div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14}}>
+                {["7","8","9","10","11","12","13"].map(y=>(
+                  <button key={y} className={`pred-btn${yearGroup===y?" selected":""}`} style={{padding:"7px 14px",fontSize:13}} onClick={()=>setYearGroup(y)}>Year {y}</button>
+                ))}
+              </div>
+            </>
+          )}
+          {userType==="Staff" && (
+            <>
+              <div style={{fontSize:13,fontWeight:700,color:"#5c3896",marginBottom:8}}>Department</div>
+              <select className="input" value={department} onChange={e=>setDepartment(e.target.value)} style={{marginBottom:14}}>
+                <option value="">Select your department...</option>
+                {["Art & Design","Business Studies","Drama","English","Geography","History","ICT & Computing","Languages","Mathematics","Music","PE & Sport","PSHE","Religious Studies","Science","SEN & Inclusion","Sixth Form","Social Sciences","Other"].map(d=>(
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+            </>
+          )}
+          <div style={{fontSize:13,fontWeight:700,color:"#5c3896",marginBottom:8}}>Favourite team <span style={{fontWeight:400,color:"#aaa"}}>(optional)</span></div>
+          <select className="input" value={favTeam} onChange={e=>setFavTeam(e.target.value)} style={{marginBottom:14}}>
+            <option value="">Select a team...</option>
+            {["Algeria","Argentina","Australia","Austria","Belgium","Bosnia and Herzegovina","Brazil","Canada","Cape Verde","Czechia","Colombia","Croatia","Curacao","DR Congo","Ecuador","Egypt","England","France","Germany","Ghana","Haiti","Iran","Iraq","Ivory Coast","Japan","Jordan","Mexico","Morocco","Netherlands","New Zealand","Norway","Panama","Paraguay","Portugal","Qatar","Saudi Arabia","Scotland","Senegal","South Africa","South Korea","Spain","Sweden","Switzerland","Tunisia","Turkey","Uruguay","USA","Uzbekistan"].map(t=>(
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+          {err && <div className="err">{err}</div>}
+          <button className="btn" onClick={handleEmailSubmit}>Send Verification Code →</button>
+        </div>
+      );
+
+      if (step==="verify") return (
+        <div className="card card-accent">
+          <div className="section-title">🔐 Verify Your Email</div>
+          <div style={{fontSize:13,color:"#666",marginBottom:14}}>Enter the 6-digit code for <strong>{email}</strong></div>
+          <div className="alert alert-purple" style={{marginBottom:14}}>
+            <span style={{fontWeight:800}}>🧪 Test mode — your code is: </span>
+            <span style={{fontSize:18,fontWeight:800,letterSpacing:3}}>{sentCode}</span>
+            <div style={{fontSize:11,marginTop:4,opacity:0.8}}>In production this would be emailed to you.</div>
+          </div>
+          <input className="input" placeholder="6-digit code" value={verCode} onChange={e=>setVerCode(e.target.value)} maxLength={6}/>
+          {err && <div className="err">{err}</div>}
+          <button className="btn" onClick={handleVerify}>Verify & Start Predicting →</button>
+        </div>
+      );
+
+      return (
+        <div>
+          <div className="card">
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+              <div>
+                <div style={{fontWeight:800,fontSize:15,color:"#5c3896"}}>{sessionUser?.name||name}'s Predictions</div>
+                <div style={{fontSize:13,color:"#6d6e71"}}>{total} of 72 fixtures predicted</div>
+              </div>
+              <div className="pill" style={allDone?{background:"#e8f5e2",color:"#2a6b15"}:{}}>{allDone?"✅ All done!":`${72-total} remaining`}</div>
+            </div>
+            <div className="progress-bar"><div className="progress-fill" style={{width:`${(total/72)*100}%`}}/></div>
+          </div>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
+            {Object.keys(GROUPS).map(g=>{
+              const gf=FIXTURES.filter(f=>f.group===g),done=gf.filter(f=>preds[f.id]).length;
+              return <button key={g} className={`group-tab${activeGroup===g?" active":""}`} onClick={()=>setActiveGroup(g)}>Group {g} {done===gf.length?"✅":`${done}/${gf.length}`}</button>;
+            })}
+          </div>
+          <div className="card">
+            <div className="section-title">Group {activeGroup}</div>
+            {FIXTURES.filter(f=>f.group===activeGroup).map(f=>(
+              <div key={f.id} className="fix-row">
+                <div className="fix-label">{FLAGS[f.home]||"🏳"} {f.home} <span style={{color:"#bbb",margin:"0 6px",fontWeight:400}}>vs</span> {FLAGS[f.away]||"🏳"} {f.away}</div>
+                <div className="pred-btns">
+                  {[["H",`${f.home} win`],["D","Draw"],["A",`${f.away} win`]].map(([c,label])=>(
+                    <button key={c} className={`pred-btn${preds[f.id]===c?" selected":""}`} onClick={()=>setPred(f.id,c)}>{label}</button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{marginTop:14}}>
+            {err && <div className="err">{err}</div>}
+            <button className={`btn${allDone?" btn-green":" btn-gray"}`} onClick={handleSubmit} disabled={!allDone||saving}>
+              {saving?"💾 Saving...":allDone?"🔒 Lock In My Predictions":`Complete all fixtures first (${total}/72)`}
+            </button>
+            <div style={{fontSize:12,color:"#aaa",marginTop:8}}>⚠️ Once submitted, predictions cannot be changed.</div>
+          </div>
+        </div>
+      );
+    }
+
+    // ─── FIXTURES ─────────────────────────────────────────────────────────────
+    function FixturesView({ results, leaderboard }) {
+      const [filter, setFilter] = useState("All");
+      const byDate = {};
+      FIXTURES.forEach(f => { if (!byDate[f.date]) byDate[f.date]=[]; byDate[f.date].push(f); });
+      const getPredStats = fid => {
+        let h=0,d=0,a=0;
+        leaderboard.forEach(u=>{const p=(u.predictions||{})[fid];if(p==="H")h++;else if(p==="D")d++;else if(p==="A")a++;});
+        return {h,d,a,total:h+d+a};
+      };
+      const formatDate = s => new Date(s+"T12:00:00Z").toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+      const dates = Object.keys(byDate).sort();
+      const filteredDates = filter==="All"?dates:dates.filter(d=>byDate[d].some(f=>f.group===filter));
+      return (
+        <div>
+          <div className="card" style={{marginBottom:12}}>
+            <div className="section-title" style={{marginBottom:8}}>📅 Group Stage Fixtures</div>
+            <p style={{fontSize:13,color:"#666",marginBottom:12}}>All times in GMT. Prediction stats update as results are entered.</p>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+              <button className={`group-tab${filter==="All"?" active":""}`} onClick={()=>setFilter("All")}>All Groups</button>
+              {Object.keys(GROUPS).map(g=>(
+                <button key={g} className={`group-tab${filter===g?" active":""}`} onClick={()=>setFilter(g)}>Group {g}</button>
+              ))}
+            </div>
+          </div>
+          {filteredDates.map(date=>{
+            const dayF=byDate[date].filter(f=>filter==="All"||f.group===filter);
+            if(!dayF.length) return null;
+            return (
+              <div key={date}>
+                <div className="date-header">📆 {formatDate(date)}</div>
+                {dayF.map(f=>{
+                  const res=results[f.id],stats=getPredStats(f.id);
+                  return (
+                    <div key={f.id} className="fix-card">
+                      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                        <div style={{fontSize:14,fontWeight:700,flex:1}}>{FLAGS[f.home]||"🏳"} {f.home}</div>
+                        <div style={{fontSize:11,color:"#bbb",fontWeight:700}}>vs</div>
+                        <div style={{fontSize:14,fontWeight:700,flex:1,textAlign:"right"}}>{f.away} {FLAGS[f.away]||"🏳"}</div>
+                      </div>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:6}}>
+                        <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                          <span style={{fontSize:10,fontWeight:800,background:"#ede8f8",color:"#5c3896",borderRadius:10,padding:"2px 8px"}}>Group {f.group}</span>
+                          <span style={{fontSize:11,color:"#aaa",fontWeight:600}}>🕐 {f.time.replace("+1","")} GMT</span>
+                        </div>
+                        {res?<span className="badge badge-green">{res==="H"?`${f.home} win`:res==="D"?"Draw":`${f.away} win`}</span>:<span className="badge badge-gray">No result yet</span>}
+                      </div>
+                      {stats.total>0&&(
+                        <div style={{marginTop:10,borderTop:"1px solid #f5f0fc",paddingTop:8}}>
+                          <div style={{fontSize:11,fontWeight:700,color:"#6d6e71",marginBottom:4,textTransform:"uppercase",letterSpacing:"0.4px"}}>
+                            Predictions — {stats.total} participant{stats.total!==1?"s":""}
+                            {res&&<span style={{marginLeft:8,color:"#4e9d2d"}}>· {res==="H"?stats.h:res==="D"?stats.d:stats.a} correct ({Math.round(((res==="H"?stats.h:res==="D"?stats.d:stats.a)/stats.total)*100)}%)</span>}
+                          </div>
+                          {[["H",f.home,stats.h,"#5c3896"],["D","Draw",stats.d,"#f36d21"],["A",f.away,stats.a,"#4e9d2d"]].map(([code,label,count,color])=>{
+                            const pct=stats.total>0?Math.round((count/stats.total)*100):0,correct=res&&res===code;
+                            return (
+                              <div key={code} style={{display:"flex",alignItems:"center",gap:6,marginBottom:3,fontSize:11,color:"#666"}}>
+                                <span style={{minWidth:100,fontWeight:correct?700:400,color:correct?"#4e9d2d":"#666"}}>{label}{correct?" ✅":""}</span>
+                                <div className="bar-bg"><div className="bar-fill" style={{width:`${pct}%`,background:correct?"#4e9d2d":color,opacity:correct?1:0.5}}/></div>
+                                <span style={{minWidth:36,textAlign:"right",fontWeight:600,color:correct?"#4e9d2d":"#888"}}>{pct}%</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    // ─── LEADERBOARD ──────────────────────────────────────────────────────────
+    function LeaderboardView({ leaderboard, results }) {
+      const [filterType, setFilterType] = useState("All");
+      const [filterSub, setFilterSub] = useState("All");
+      const yearGroups = ["All","Year 7","Year 8","Year 9","Year 10","Year 11","Year 12","Year 13"];
+      const filtered = leaderboard.filter(u => {
+        if (filterType==="All") return true;
+        if (filterType==="Student") { if(u.user_type!=="Student")return false; if(filterSub!=="All"&&`Year ${u.year_group}`!==filterSub)return false; return true; }
+        return u.user_type==="Staff";
+      });
+      return (
+        <div>
+          <div className="card">
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+              <div className="section-title" style={{marginBottom:0}}>🏆 Leaderboard</div>
+              <div className="pill">{Object.keys(results).length}/72 results in</div>
+            </div>
+            <div style={{marginBottom:12}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#6d6e71",textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:6}}>Filter by</div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
+                {["All","Student","Staff"].map(t=><button key={t} className={`group-tab${filterType===t?" active":""}`} onClick={()=>{setFilterType(t);setFilterSub("All");}}>{t}</button>)}
+              </div>
+              {filterType==="Student"&&(
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  {yearGroups.map(y=><button key={y} className={`group-tab${filterSub===y?" active":""}`} style={{fontSize:11}} onClick={()=>setFilterSub(y)}>{y}</button>)}
+                </div>
+              )}
+            </div>
+            <div style={{height:1,background:"#f0eaf8",marginBottom:12}}/>
+            {filtered.length===0
+              ? <div style={{fontSize:14,color:"#aaa",textAlign:"center",padding:"1.5rem 0"}}>No participants match this filter yet.</div>
+              : filtered.map((u,i)=>(
+                <div key={u.email} className={`lb-row${i===0?" gold":""}`}>
+                  <div style={{width:30,textAlign:"center",fontSize:i<3?20:14,fontWeight:700,color:"#999"}}>{i===0?"🥇":i===1?"🥈":i===2?"🥉":i+1}</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:14,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.name}</div>
+                    <div style={{fontSize:11,color:"#bbb",marginTop:1}}>{u.user_type==="Student"?`Student · Year ${u.year_group}`:u.user_type==="Staff"?`Staff · ${u.department}`:u.email}</div>
+                  </div>
+                  <div style={{textAlign:"right"}}>
+                    <div className="badge">{u.pts} pts</div>
+                    <div style={{fontSize:11,color:"#aaa",marginTop:3}}>{u.correct} correct</div>
+                  </div>
+                </div>
+              ))
+            }
+          </div>
+          <div className="card" style={{background:"#ede8f8",border:"none"}}>
+            <div style={{fontSize:13,color:"#5c3896",fontWeight:600}}>Scoring: 3 points for every correct result (home win / draw / away win)</div>
+          </div>
+        </div>
+      );
+    }
+
+    // ─── ADMIN ────────────────────────────────────────────────────────────────
+    function AdminView({ results, saveResult, adminMode, setAdminMode, users, saveUser, deleteUser }) {
+      const [pw, setPw] = useState("");
+      const [err, setErr] = useState("");
+      const [activeTab, setActiveTab] = useState("results");
+      const [activeGroup, setActiveGroup] = useState("A");
+      const [saving, setSaving] = useState(false);
+      const [saved, setSaved] = useState(false);
+      const [search, setSearch] = useState("");
+      const [editingUser, setEditingUser] = useState(null);
+      const [editPreds, setEditPreds] = useState({});
+      const [editGroup, setEditGroup] = useState("A");
+      const [confirmDelete, setConfirmDelete] = useState(null);
+      const [subSaved, setSubSaved] = useState(false);
+
+      const login = () => { if(pw===ADMIN_PASSWORD){setAdminMode(true);setErr("");}else setErr("Incorrect password."); };
+
+      const handleSaveResult = async (fid, val) => {
+        setSaved(false);
+        await saveResult(fid, val);
+        setSaved(true);
+        setTimeout(()=>setSaved(false),2000);
+      };
+
+      const handleEditUser = u => { setEditingUser(u.email); setEditPreds({...u.predictions}); setEditGroup("A"); };
+      const handleSaveEdit = async () => {
+        setSaving(true);
+        const u = users.find(x=>x.email===editingUser);
+        await saveUser({...u, predictions: editPreds});
+        setSaving(false); setEditingUser(null); setSubSaved(true);
+        setTimeout(()=>setSubSaved(false),3000);
+      };
+      const handleUnlock = async email => {
+        const u = users.find(x=>x.email===email);
+        await saveUser({...u, submitted: false});
+      };
+
+      if (!adminMode) return (
+        <div className="card card-accent">
+          <div className="section-title">🔧 Admin Panel</div>
+          <p style={{fontSize:13,color:"#666",marginBottom:14}}>Enter the admin password to manage the competition.</p>
+          <input className="input" type="password" placeholder="Admin password" value={pw} onChange={e=>setPw(e.target.value)} onKeyDown={e=>e.key==="Enter"&&login()}/>
+          {err&&<div className="err">{err}</div>}
+          <button className="btn" onClick={login}>Login →</button>
+        </div>
+      );
+
+      if (editingUser) {
+        const total=Object.keys(editPreds).length;
+        return (
+          <div>
+            <div className="card card-accent" style={{marginBottom:12}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+                <div>
+                  <div className="section-title" style={{marginBottom:2}}>✏️ Editing: {users.find(u=>u.email===editingUser)?.name}</div>
+                  <div style={{fontSize:12,color:"#6d6e71"}}>{editingUser}</div>
+                </div>
+                <button className="btn" style={{background:"#888",padding:"7px 14px",fontSize:13}} onClick={()=>setEditingUser(null)}>← Back</button>
+              </div>
+              <div style={{marginTop:10,fontSize:13,color:"#666"}}>{total}/72 predictions set</div>
+              <div className="progress-bar" style={{marginTop:6}}><div className="progress-fill" style={{width:`${(total/72)*100}%`}}/></div>
+            </div>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
+              {Object.keys(GROUPS).map(g=>{
+                const gf=FIXTURES.filter(f=>f.group===g),done=gf.filter(f=>editPreds[f.id]).length;
+                return <button key={g} className={`group-tab${editGroup===g?" active":""}`} onClick={()=>setEditGroup(g)}>Group {g} {done===gf.length?"✅":`${done}/${gf.length}`}</button>;
+              })}
+            </div>
+            <div className="card">
+              <div className="section-title">Group {editGroup}</div>
+              {FIXTURES.filter(f=>f.group===editGroup).map(f=>(
+                <div key={f.id} className="fix-row">
+                  <div className="fix-label">{FLAGS[f.home]||"🏳"} {f.home} <span style={{color:"#bbb",margin:"0 6px",fontWeight:400}}>vs</span> {FLAGS[f.away]||"🏳"} {f.away}</div>
+                  <div className="pred-btns">
+                    {[["H",`${f.home} win`],["D","Draw"],["A",`${f.away} win`]].map(([c,label])=>(
+                      <button key={c} className={`pred-btn${editPreds[f.id]===c?" selected":""}`} style={{fontSize:12,padding:"5px 10px"}} onClick={()=>setEditPreds(p=>({...p,[f.id]:c}))}>{label}</button>
+                    ))}
+                    {editPreds[f.id]&&<button className="pred-btn" style={{color:"#c00",borderColor:"#f5c0c0",fontSize:11}} onClick={()=>setEditPreds(p=>{const n={...p};delete n[f.id];return n;})}>✕ Clear</button>}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{marginTop:14,display:"flex",gap:10,alignItems:"center"}}>
+              <button className="btn btn-green" onClick={handleSaveEdit} disabled={saving}>{saving?"Saving...":"💾 Save Changes"}</button>
+              <button className="btn" style={{background:"#888"}} onClick={()=>setEditingUser(null)}>Cancel</button>
+            </div>
+          </div>
+        );
+      }
+
+      const participantList = users.filter(u=>
+        !search||u.name?.toLowerCase().includes(search.toLowerCase())||u.email?.toLowerCase().includes(search.toLowerCase())
+      );
+
+      return (
+        <div>
+          <div className="card" style={{marginBottom:12}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div className="section-title" style={{marginBottom:0}}>🔧 Admin Panel</div>
+              <div className="pill">{users.length} participants</div>
+            </div>
+            <div className="tabs">
+              {[["results","⚽ Match Results"],["submissions","👥 Manage Submissions"]].map(([t,label])=>(
+                <button key={t} className={`group-tab${activeTab===t?" active":""}`} style={{fontSize:13,padding:"7px 16px"}} onClick={()=>setActiveTab(t)}>{label}</button>
+              ))}
+            </div>
+          </div>
+
+          {activeTab==="results"&&(
+            <>
+              <div className="card" style={{marginBottom:12}}>
+                <p style={{fontSize:13,color:"#666"}}>Click a result to save it instantly. The leaderboard and fixtures page update in real time for all users.</p>
+                {saved&&<div className="ok" style={{marginTop:8}}>✅ Result saved!</div>}
+              </div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
+                {Object.keys(GROUPS).map(g=>{
+                  const done=FIXTURES.filter(f=>f.group===g&&results[f.id]).length,tot=FIXTURES.filter(f=>f.group===g).length;
+                  return <button key={g} className={`group-tab${activeGroup===g?" active":""}`} onClick={()=>setActiveGroup(g)}>Group {g} {done>0?`${done}/${tot}`:""}</button>;
+                })}
+              </div>
+              <div className="card">
+                <div className="section-title">Group {activeGroup} Results</div>
+                {FIXTURES.filter(f=>f.group===activeGroup).map(f=>(
+                  <div key={f.id} className="fix-row">
+                    <div className="fix-label">{FLAGS[f.home]||"🏳"} {f.home} <span style={{color:"#bbb",margin:"0 6px",fontWeight:400}}>vs</span> {FLAGS[f.away]||"🏳"} {f.away}</div>
+                    <div className="pred-btns">
+                      {[["H",`${f.home} win`],["D","Draw"],["A",`${f.away} win`]].map(([c,label])=>(
+                        <button key={c} className={`pred-btn${results[f.id]===c?" selected":""}`} style={{fontSize:12,padding:"5px 10px"}} onClick={()=>handleSaveResult(f.id,c)}>{label}</button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {activeTab==="submissions"&&(
+            <>
+              <div className="card" style={{marginBottom:12}}>
+                <p style={{fontSize:13,color:"#666",marginBottom:10}}>Edit, unlock or delete participant submissions. Changes save instantly to the database.</p>
+                <input className="input" style={{marginBottom:0}} placeholder="🔍 Search by name or email..." value={search} onChange={e=>setSearch(e.target.value)}/>
+              </div>
+              {subSaved&&<div className="alert alert-green" style={{marginBottom:12}}>✅ Submission updated.</div>}
+              {participantList.length===0
+                ? <div className="card" style={{textAlign:"center",color:"#aaa",fontSize:14}}>No participants found.</div>
+                : participantList.map(u=>(
+                  <div key={u.email} className="card" style={{marginBottom:8}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:8}}>
+                      <div>
+                        <div style={{fontSize:14,fontWeight:700}}>{u.name||"—"}</div>
+                        <div style={{fontSize:12,color:"#6d6e71"}}>{u.email}</div>
+                        <div style={{fontSize:11,color:"#bbb",marginTop:2}}>
+                          {u.user_type==="Student"?`Student · Year ${u.year_group}`:u.user_type==="Staff"?`Staff · ${u.department}`:"—"}
+                          {" · "}{Object.keys(u.predictions||{}).length}/72 predictions
+                          {" · "}<span style={{color:u.submitted?"#4e9d2d":"#f36d21",fontWeight:700}}>{u.submitted?"🔒 Locked":"🔓 Unlocked"}</span>
+                        </div>
+                      </div>
+                      <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                        <button className="btn" style={{padding:"6px 12px",fontSize:12}} onClick={()=>handleEditUser(u)}>✏️ Edit</button>
+                        <button className="btn btn-orange" style={{padding:"6px 12px",fontSize:12}} onClick={()=>handleUnlock(u.email)}>🔓 Unlock</button>
+                        <button className="btn btn-red" style={{padding:"6px 12px",fontSize:12}} onClick={()=>setConfirmDelete(u.email)}>🗑 Delete</button>
+                      </div>
+                    </div>
+                    {confirmDelete===u.email&&(
+                      <div className="alert alert-orange" style={{marginTop:10}}>
+                        <div style={{fontWeight:700,marginBottom:6}}>⚠️ Delete {u.name}'s submission? This cannot be undone.</div>
+                        <div style={{display:"flex",gap:8}}>
+                          <button className="btn btn-red" style={{padding:"6px 14px",fontSize:12}} onClick={()=>{deleteUser(u.email);setConfirmDelete(null);}}>Yes, delete</button>
+                          <button className="btn" style={{background:"#888",padding:"6px 14px",fontSize:12}} onClick={()=>setConfirmDelete(null)}>Cancel</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))
+              }
+            </>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+  </script>
+</body>
+</html>
