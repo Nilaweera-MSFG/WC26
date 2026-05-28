@@ -25,7 +25,7 @@
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     const DEADLINE = new Date("2026-06-11T19:00:00Z");
-    const ADMIN_PASSWORD = "mulberry1984"; // ← Change before going live!
+
 
     const BRAND = {
       purple:"#5c3896", purpleDark:"#3d2566",
@@ -359,7 +359,6 @@
       const [email, setEmail] = useState("");
       const [name, setName] = useState("");
       const [verCode, setVerCode] = useState("");
-      const [sentCode, setSentCode] = useState("");
       const [err, setErr] = useState("");
       const [saving, setSaving] = useState(false);
       const [userType, setUserType] = useState("");
@@ -373,6 +372,8 @@
         if (sessionUser) { setPreds(sessionUser.predictions || {}); setStep("form"); }
       }, [sessionUser]);
 
+      const FUNCTION_URL = "https://kmavclegdxssujusxtzd.supabase.co/functions/v1/send-verification";
+
       const fetchDisplayName = async (e) => {
         // DEVELOPER INTEGRATION POINT: replace with Microsoft Graph API call
         const local = e.split("@")[0];
@@ -382,63 +383,49 @@
       const handleEmailSubmit = async () => {
         setErr("");
         const e = email.trim().toLowerCase();
-        if (!e.endsWith("@mulberryschoolstrust.org")) {
-          setErr("Please use your @mulberryschoolstrust.org school email."); return;
-        }
+        if (!e.endsWith("@mulberryschoolstrust.org")) { setErr("Please use your @mulberryschoolstrust.org school email."); return; }
         const existing = users.find(u => u.email === e);
-        if (existing?.submitted) {
-          setErr("This email has already submitted predictions."); return;
-        }
+        if (existing?.submitted) { setErr("This email has already submitted predictions."); return; }
         if (!userType) { setErr("Please select Student or Staff."); return; }
-        if (userType === "Student" && !yearGroup) { setErr("Please select your year group."); return; }
-        if (userType === "Staff" && !department) { setErr("Please select your department."); return; }
-      
+        if (userType==="Student" && !yearGroup) { setErr("Please select your year group."); return; }
+        if (userType==="Staff" && !department) { setErr("Please select your department."); return; }
         setSaving(true);
         try {
-          const res = await fetch(
-            "https://kmavclegdxssujusxtzd.supabase.co/functions/v1/send-verification",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImttYXZjbGVnZHhzc3VqdXN4dHpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzNzYyMjUsImV4cCI6MjA5NDk1MjIyNX0.J170aXs73Kk4E9z1zNgYs9YtEJzOnmnQQaP2eMNjZk4`,
-              },
-              body: JSON.stringify({ action: "send", email: e }),
-            }
-          );
+          const res = await fetch(FUNCTION_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${SUPABASE_KEY}`,
+            },
+            body: JSON.stringify({ action: "send", email: e }),
+          });
           const data = await res.json();
           if (!res.ok) { setErr(data.error || "Failed to send code. Please try again."); setSaving(false); return; }
           const displayName = await fetchDisplayName(e);
           setName(displayName);
           setStep("verify");
-        } catch (err) {
+        } catch(err) {
           setErr("Network error. Please check your connection and try again.");
         }
         setSaving(false);
       };
-      
+
       const handleVerify = async () => {
         setErr(""); setSaving(true);
         try {
           const e = email.trim().toLowerCase();
-          const res = await fetch(
-            "https://kmavclegdxssujusxtzd.supabase.co/functions/v1/send-verification",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImttYXZjbGVnZHhzc3VqdXN4dHpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzNzYyMjUsImV4cCI6MjA5NDk1MjIyNX0.J170aXs73Kk4E9z1zNgYs9YtEJzOnmnQQaP2eMNjZk4`,
-              },
-              body: JSON.stringify({ action: "verify", email: e, code: verCode.trim() }),
-            }
-          );
+          const res = await fetch(FUNCTION_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${SUPABASE_KEY}`,
+            },
+            body: JSON.stringify({ action: "verify", email: e, code: verCode.trim() }),
+          });
           const data = await res.json();
-          if (!res.ok || !data.valid) {
-            setErr(data.error || "Incorrect code. Please try again.");
-            setSaving(false); return;
-          }
+          if (!res.ok || !data.valid) { setErr(data.error || "Incorrect code. Please try again."); setSaving(false); return; }
           setSession(e); setStep("form"); setErr("");
-        } catch (err) {
+        } catch(err) {
           setErr("Network error. Please check your connection and try again.");
         }
         setSaving(false);
@@ -525,8 +512,7 @@
           <div className="section-title">🔐 Verify Your Email</div>
           <div style={{fontSize:13,color:"#666",marginBottom:14}}>Enter the 6-digit code for <strong>{email}</strong></div>
           <div className="alert alert-green" style={{marginBottom:14}}>
-            ✅ A verification code has been sent to <strong>{email}</strong>. 
-            Please check your inbox — it may take a minute to arrive.
+            ✅ A verification code has been sent to <strong>{email}</strong>. Please check your inbox — it may take a minute to arrive.
           </div>
           <input className="input" placeholder="6-digit code" value={verCode} onChange={e=>setVerCode(e.target.value)} maxLength={6}/>
           {err && <div className="err">{err}</div>}
@@ -719,7 +705,26 @@
       const [confirmDelete, setConfirmDelete] = useState(null);
       const [subSaved, setSubSaved] = useState(false);
 
-      const login = () => { if(pw===ADMIN_PASSWORD){setAdminMode(true);setErr("");}else setErr("Incorrect password."); };
+      const login = async () => {
+        try {
+          const res = await fetch(
+            "https://kmavclegdxssujusxtzd.supabase.co/functions/v1/send-verification",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${SUPABASE_KEY}`,
+              },
+              body: JSON.stringify({ action: "admin_login", email: "admin", code: pw }),
+            }
+          );
+          const data = await res.json();
+          if (data.valid) { setAdminMode(true); setErr(""); }
+          else setErr("Incorrect password.");
+        } catch(e) {
+          setErr("Network error. Please try again.");
+        }
+      };
 
       const handleSaveResult = async (fid, val) => {
         setSaved(false);
