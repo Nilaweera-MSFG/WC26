@@ -389,6 +389,14 @@
         if (!userType) { setErr("Please select Student or Staff."); return; }
         if (userType==="Student" && !yearGroup) { setErr("Please select your year group."); return; }
         if (userType==="Staff" && !department) { setErr("Please select your department."); return; }
+        // TEMPORARY: email verification disabled until DNS records are configured
+        // TO RE-ENABLE: remove this block and uncomment the fetch block below
+        const displayName = await fetchDisplayName(e);
+        setName(displayName);
+        setSession(e);
+        setStep("form");
+
+        /* RESTORE THIS WHEN DNS IS READY:
         setSaving(true);
         try {
           const res = await fetch(FUNCTION_URL, {
@@ -408,6 +416,7 @@
           setErr("Network error. Please check your connection and try again.");
         }
         setSaving(false);
+        */
       };
 
       const handleVerify = async () => {
