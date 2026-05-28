@@ -524,10 +524,9 @@
         <div className="card card-accent">
           <div className="section-title">🔐 Verify Your Email</div>
           <div style={{fontSize:13,color:"#666",marginBottom:14}}>Enter the 6-digit code for <strong>{email}</strong></div>
-          <div className="alert alert-purple" style={{marginBottom:14}}>
-            <span style={{fontWeight:800}}>🧪 Test mode — your code is: </span>
-            <span style={{fontSize:18,fontWeight:800,letterSpacing:3}}>{sentCode}</span>
-            <div style={{fontSize:11,marginTop:4,opacity:0.8}}>In production this would be emailed to you.</div>
+          <div className="alert alert-green" style={{marginBottom:14}}>
+            ✅ A verification code has been sent to <strong>{email}</strong>. 
+            Please check your inbox — it may take a minute to arrive.
           </div>
           <input className="input" placeholder="6-digit code" value={verCode} onChange={e=>setVerCode(e.target.value)} maxLength={6}/>
           {err && <div className="err">{err}</div>}
