@@ -382,22 +382,66 @@
       const handleEmailSubmit = async () => {
         setErr("");
         const e = email.trim().toLowerCase();
-        if (!e.endsWith("@mulberryschoolstrust.org")) { setErr("Please use your @mulberryschoolstrust.org school email."); return; }
+        if (!e.endsWith("@mulberryschoolstrust.org")) {
+          setErr("Please use your @mulberryschoolstrust.org school email."); return;
+        }
         const existing = users.find(u => u.email === e);
-        if (existing?.submitted) { setErr("This email has already submitted predictions."); return; }
+        if (existing?.submitted) {
+          setErr("This email has already submitted predictions."); return;
+        }
         if (!userType) { setErr("Please select Student or Staff."); return; }
-        if (userType==="Student" && !yearGroup) { setErr("Please select your year group."); return; }
-        if (userType==="Staff" && !department) { setErr("Please select your department."); return; }
-        const displayName = await fetchDisplayName(e);
-        setName(displayName);
-        const c = Math.floor(100000+Math.random()*900000).toString();
-        setSentCode(c);
-        setStep("verify");
+        if (userType === "Student" && !yearGroup) { setErr("Please select your year group."); return; }
+        if (userType === "Staff" && !department) { setErr("Please select your department."); return; }
+      
+        setSaving(true);
+        try {
+          const res = await fetch(
+            "https://kmavclegdxssujusxtzd.supabase.co/functions/v1/send-verification",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImttYXZjbGVnZHhzc3VqdXN4dHpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzNzYyMjUsImV4cCI6MjA5NDk1MjIyNX0.J170aXs73Kk4E9z1zNgYs9YtEJzOnmnQQaP2eMNjZk4`,
+              },
+              body: JSON.stringify({ action: "send", email: e }),
+            }
+          );
+          const data = await res.json();
+          if (!res.ok) { setErr(data.error || "Failed to send code. Please try again."); setSaving(false); return; }
+          const displayName = await fetchDisplayName(e);
+          setName(displayName);
+          setStep("verify");
+        } catch (err) {
+          setErr("Network error. Please check your connection and try again.");
+        }
+        setSaving(false);
       };
-
-      const handleVerify = () => {
-        if (verCode.trim()!==sentCode) { setErr("Incorrect code."); return; }
-        setSession(email.trim().toLowerCase()); setStep("form"); setErr("");
+      
+      const handleVerify = async () => {
+        setErr(""); setSaving(true);
+        try {
+          const e = email.trim().toLowerCase();
+          const res = await fetch(
+            "https://kmavclegdxssujusxtzd.supabase.co/functions/v1/send-verification",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImttYXZjbGVnZHhzc3VqdXN4dHpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzNzYyMjUsImV4cCI6MjA5NDk1MjIyNX0.J170aXs73Kk4E9z1zNgYs9YtEJzOnmnQQaP2eMNjZk4`,
+              },
+              body: JSON.stringify({ action: "verify", email: e, code: verCode.trim() }),
+            }
+          );
+          const data = await res.json();
+          if (!res.ok || !data.valid) {
+            setErr(data.error || "Incorrect code. Please try again.");
+            setSaving(false); return;
+          }
+          setSession(e); setStep("form"); setErr("");
+        } catch (err) {
+          setErr("Network error. Please check your connection and try again.");
+        }
+        setSaving(false);
       };
 
       const setPred = (fid, val) => setPreds(p => ({...p,[fid]:val}));
