@@ -356,7 +356,9 @@
               if (u.favourite_team_2) teamPts[u.favourite_team_2] = (teamPts[u.favourite_team_2]||0) + 2;
               if (u.favourite_team_3) teamPts[u.favourite_team_3] = (teamPts[u.favourite_team_3]||0) + 1;
             });
-            const ranked = Object.entries(teamPts).sort((a,b)=>b[1]-a[1]).slice(0,10);
+            const allTeams = ["Algeria","Argentina","Australia","Austria","Belgium","Bosnia and Herzegovina","Brazil","Canada","Cape Verde","Czechia","Colombia","Croatia","Curacao","DR Congo","Ecuador","Egypt","England","France","Germany","Ghana","Haiti","Iran","Iraq","Ivory Coast","Japan","Jordan","Mexico","Morocco","Netherlands","New Zealand","Norway","Panama","Paraguay","Portugal","Qatar","Saudi Arabia","Scotland","Senegal","South Africa","South Korea","Spain","Sweden","Switzerland","Tunisia","Turkey","Uruguay","USA","Uzbekistan"];
+            allTeams.forEach(t => { if (!teamPts[t]) teamPts[t] = 0; });
+            const ranked = Object.entries(teamPts).sort((a,b)=>b[1]-a[1]);
             if (ranked.length === 0) return null;
             const max = ranked[0][1];
             return (
