@@ -234,7 +234,79 @@
         const rSub = sb.channel("results-changes")
           .on("postgres_changes", { event: "*", schema: "public", table: "results" }, fetchData)
           .subscribe();
-        return () => { sb.removeChannel(uSub); sb.removeChannel(rSub); };
+        if (selectedUser) {
+        const u = leaderboard.find(x => x.email === selectedUser);
+        if (!u) return null;
+        const preds = u.predictions || {};
+        return (
+          <div>
+            <div className="card card-accent" style={{marginBottom:12}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+                <div>
+                  <div style={{fontSize:16,fontWeight:800,color:"#5c3896"}}>{u.name}</div>
+                  <div style={{fontSize:12,color:"#6d6e71"}}>{u.user_type==="Student"?`Student · Year ${u.year_group}`:u.user_type==="Staff"?`Staff · ${u.department}`:u.email}</div>
+                </div>
+                <button className="btn" style={{background:"#888",padding:"7px 14px",fontSize:13}} onClick={()=>setSelectedUser(null)}>← Back</button>
+              </div>
+              <div style={{display:"flex",gap:10,marginTop:12,flexWrap:"wrap"}}>
+                <div className="stat-card" style={{flex:1,minWidth:100}}>
+                  <div className="stat-val">{u.pts}</div>
+                  <div className="stat-label">Points</div>
+                </div>
+                <div className="stat-card" style={{flex:1,minWidth:100}}>
+                  <div className="stat-val">{u.correct}</div>
+                  <div className="stat-label">Correct</div>
+                </div>
+                <div className="stat-card" style={{flex:1,minWidth:100}}>
+                  <div className="stat-val">{Object.keys(results).length > 0 ? `${Math.round((u.correct/Object.keys(results).length)*100)}%` : "—"}</div>
+                  <div className="stat-label">Accuracy</div>
+                </div>
+              </div>
+            </div>
+            {Object.keys(GROUPS).map(g => {
+              const gFixtures = FIXTURES.filter(f => f.group === g);
+              return (
+                <div key={g} className="card" style={{marginBottom:8}}>
+                  <div className="section-title">Group {g}</div>
+                  {gFixtures.map(f => {
+                    const pred = preds[f.id];
+                    const res = results[f.id];
+                    const isCorrect = pred && res && pred === res;
+                    const isWrong = pred && res && pred !== res;
+                    const isPending = pred && !res;
+                    const noEntry = !pred;
+                    const predLabel = pred === "H" ? `${f.home} win` : pred === "D" ? "Draw" : pred === "A" ? `${f.away} win` : null;
+                    const resLabel = res === "H" ? `${f.home} win` : res === "D" ? "Draw" : res === "A" ? `${f.away} win` : null;
+                    return (
+                      <div key={f.id} style={{padding:"9px 0",borderBottom:"1px solid #f0eaf8"}}>
+                        <div style={{fontSize:13,fontWeight:700,marginBottom:5,color:"#333"}}>
+                          {FLAGS[f.home]||"🏳"} {f.home} <span style={{color:"#bbb",margin:"0 4px",fontWeight:400}}>vs</span> {FLAGS[f.away]||"🏳"} {f.away}
+                        </div>
+                        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                          {noEntry
+                            ? <span style={{fontSize:12,color:"#ccc"}}>No prediction</span>
+                            : <span style={{
+                                fontSize:12,fontWeight:700,padding:"3px 10px",borderRadius:8,
+                                background: isCorrect?"#e8f5e2":isWrong?"#fde8e8":isPending?"#ede8f8":"#f5f5f5",
+                                color: isCorrect?"#2a6b15":isWrong?"#a32020":isPending?"#5c3896":"#888",
+                                border: `1.5px solid ${isCorrect?"#a5d68a":isWrong?"#f5c0c0":isPending?"#d4c8e8":"#eee"}`
+                              }}>
+                                {isCorrect?"✅ ":isWrong?"❌ ":isPending?"⏳ ":""}{predLabel}
+                              </span>
+                          }
+                          {res && <span style={{fontSize:11,color:"#aaa",fontWeight:600}}>Result: {resLabel}</span>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        );
+      }
+
+) => { sb.removeChannel(uSub); sb.removeChannel(rSub); };
       }, [fetchData]);
 
       const saveUser = async (userData) => {
@@ -695,7 +767,8 @@
 
     // ─── LEADERBOARD ──────────────────────────────────────────────────────────
     function LeaderboardView({ leaderboard, results }) {
-      const [filterType, setFilterType] = useState("All");
+      const [selectedUser, setSelectedUser] = useState(null);
+    const [filterType, setFilterType] = useState("All");
       const [filterSub, setFilterSub] = useState("All");
       const yearGroups = ["All","Year 7","Year 8","Year 9","Year 10","Year 11","Year 12","Year 13"];
       const filtered = leaderboard.filter(u => {
@@ -727,7 +800,7 @@
               : filtered.map((u,i)=>{
                 const hasPoints = u.pts > 0;
                 return (
-                <div key={u.email} className={`lb-row${i===0&&hasPoints?" gold":""}`}>
+                <div key={u.email} className={`lb-row${i===0&&hasPoints?" gold":""}`} style={{cursor:"pointer"}} onClick={()=>setSelectedUser(u.email)}>
                   <div style={{width:30,textAlign:"center",fontSize:i<3&&hasPoints?20:14,fontWeight:700,color:"#999"}}>
                     {hasPoints ? (i===0?"🥇":i===1?"🥈":i===2?"🥉":i+1) : i+1}
                   </div>
@@ -739,6 +812,7 @@
                     <div className="badge">{u.pts} pts</div>
                     <div style={{fontSize:11,color:"#aaa",marginTop:3}}>{u.correct} correct</div>
                   </div>
+                  <div style={{fontSize:16,color:"#d4c8e8"}}>›</div>
                 </div>
                 );
               })
