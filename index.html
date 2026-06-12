@@ -38,83 +38,83 @@ const GROUPS = {
 };
 
 const FIXTURES = [
-  {id:1,group:"A",home:"Mexico",away:"South Africa",date:"2026-06-11",time:"19:00"},
-  {id:2,group:"A",home:"South Korea",away:"Czechia",date:"2026-06-11",time:"02:00+1"},
-  {id:3,group:"B",home:"Canada",away:"Bosnia and Herzegovina",date:"2026-06-12",time:"19:00"},
-  {id:4,group:"D",home:"USA",away:"Paraguay",date:"2026-06-12",time:"01:00+1"},
-  {id:5,group:"B",home:"Qatar",away:"Switzerland",date:"2026-06-13",time:"19:00"},
-  {id:6,group:"C",home:"Brazil",away:"Morocco",date:"2026-06-13",time:"23:00"},
-  {id:7,group:"C",home:"Haiti",away:"Scotland",date:"2026-06-13",time:"01:00+1"},
-  {id:8,group:"D",home:"Australia",away:"Turkey",date:"2026-06-13",time:"04:00+1"},
-  {id:9,group:"E",home:"Germany",away:"Curacao",date:"2026-06-14",time:"18:00"},
-  {id:10,group:"F",home:"Netherlands",away:"Japan",date:"2026-06-14",time:"21:00"},
-  {id:11,group:"E",home:"Ivory Coast",away:"Ecuador",date:"2026-06-14",time:"00:00+1"},
-  {id:12,group:"F",home:"Sweden",away:"Tunisia",date:"2026-06-14",time:"04:00+1"},
-  {id:13,group:"H",home:"Spain",away:"Cape Verde",date:"2026-06-15",time:"17:00"},
-  {id:14,group:"G",home:"Belgium",away:"Egypt",date:"2026-06-15",time:"23:00"},
-  {id:15,group:"H",home:"Saudi Arabia",away:"Uruguay",date:"2026-06-15",time:"23:00"},
-  {id:16,group:"G",home:"Iran",away:"New Zealand",date:"2026-06-15",time:"05:00+1"},
-  {id:17,group:"I",home:"France",away:"Senegal",date:"2026-06-16",time:"20:00"},
-  {id:18,group:"I",home:"Iraq",away:"Norway",date:"2026-06-16",time:"23:00"},
-  {id:19,group:"J",home:"Argentina",away:"Algeria",date:"2026-06-16",time:"03:00+1"},
-  {id:20,group:"J",home:"Austria",away:"Jordan",date:"2026-06-16",time:"08:00+1"},
-  {id:21,group:"K",home:"Portugal",away:"DR Congo",date:"2026-06-17",time:"19:00"},
-  {id:22,group:"L",home:"England",away:"Croatia",date:"2026-06-17",time:"22:00"},
-  {id:23,group:"L",home:"Ghana",away:"Panama",date:"2026-06-17",time:"00:00+1"},
-  {id:24,group:"K",home:"Uzbekistan",away:"Colombia",date:"2026-06-17",time:"04:00+1"},
-  {id:25,group:"A",home:"Czechia",away:"South Africa",date:"2026-06-18",time:"17:00"},
-  {id:26,group:"B",home:"Switzerland",away:"Bosnia and Herzegovina",date:"2026-06-18",time:"23:00"},
-  {id:27,group:"B",home:"Canada",away:"Qatar",date:"2026-06-18",time:"02:00+1"},
-  {id:28,group:"A",home:"Mexico",away:"South Korea",date:"2026-06-18",time:"03:00+1"},
-  {id:29,group:"C",home:"Scotland",away:"Morocco",date:"2026-06-19",time:"23:00"},
-  {id:30,group:"D",home:"USA",away:"Australia",date:"2026-06-19",time:"23:00"},
-  {id:31,group:"C",home:"Brazil",away:"Haiti",date:"2026-06-19",time:"02:00+1"},
-  {id:32,group:"D",home:"Turkey",away:"Paraguay",date:"2026-06-19",time:"08:00+1"},
-  {id:33,group:"F",home:"Netherlands",away:"Sweden",date:"2026-06-20",time:"19:00"},
-  {id:34,group:"E",home:"Germany",away:"Ivory Coast",date:"2026-06-20",time:"21:00"},
-  {id:35,group:"E",home:"Ecuador",away:"Curacao",date:"2026-06-20",time:"04:00+1"},
-  {id:36,group:"F",home:"Tunisia",away:"Japan",date:"2026-06-20",time:"06:00+1"},
-  {id:37,group:"H",home:"Spain",away:"Saudi Arabia",date:"2026-06-21",time:"17:00"},
-  {id:38,group:"G",home:"Belgium",away:"Iran",date:"2026-06-21",time:"23:00"},
-  {id:39,group:"H",home:"Uruguay",away:"Cape Verde",date:"2026-06-21",time:"23:00"},
-  {id:40,group:"G",home:"New Zealand",away:"Egypt",date:"2026-06-21",time:"05:00+1"},
-  {id:41,group:"J",home:"Argentina",away:"Austria",date:"2026-06-22",time:"19:00"},
-  {id:42,group:"I",home:"France",away:"Iraq",date:"2026-06-22",time:"22:00"},
-  {id:43,group:"I",home:"Norway",away:"Senegal",date:"2026-06-22",time:"01:00+1"},
-  {id:44,group:"J",home:"Jordan",away:"Algeria",date:"2026-06-22",time:"07:00+1"},
-  {id:45,group:"K",home:"Portugal",away:"Uzbekistan",date:"2026-06-23",time:"19:00"},
-  {id:46,group:"L",home:"England",away:"Ghana",date:"2026-06-23",time:"21:00"},
-  {id:47,group:"L",home:"Panama",away:"Croatia",date:"2026-06-23",time:"00:00+1"},
-  {id:48,group:"K",home:"Colombia",away:"DR Congo",date:"2026-06-23",time:"04:00+1"},
-  {id:49,group:"B",home:"Switzerland",away:"Canada",date:"2026-06-24",time:"23:00"},
-  {id:50,group:"B",home:"Bosnia and Herzegovina",away:"Qatar",date:"2026-06-24",time:"23:00"},
-  {id:51,group:"C",home:"Scotland",away:"Brazil",date:"2026-06-24",time:"23:00"},
-  {id:52,group:"C",home:"Morocco",away:"Haiti",date:"2026-06-24",time:"23:00"},
-  {id:53,group:"A",home:"Czechia",away:"Mexico",date:"2026-06-24",time:"03:00+1"},
-  {id:54,group:"A",home:"South Africa",away:"South Korea",date:"2026-06-24",time:"03:00+1"},
-  {id:55,group:"E",home:"Ecuador",away:"Germany",date:"2026-06-25",time:"21:00"},
-  {id:56,group:"E",home:"Curacao",away:"Ivory Coast",date:"2026-06-25",time:"21:00"},
-  {id:57,group:"F",home:"Japan",away:"Sweden",date:"2026-06-25",time:"01:00+1"},
-  {id:58,group:"F",home:"Tunisia",away:"Netherlands",date:"2026-06-25",time:"01:00+1"},
-  {id:59,group:"D",home:"Turkey",away:"USA",date:"2026-06-25",time:"06:00+1"},
-  {id:60,group:"D",home:"Paraguay",away:"Australia",date:"2026-06-25",time:"06:00+1"},
-  {id:61,group:"I",home:"Norway",away:"France",date:"2026-06-26",time:"20:00"},
-  {id:62,group:"I",home:"Senegal",away:"Iraq",date:"2026-06-26",time:"20:00"},
-  {id:63,group:"H",home:"Cape Verde",away:"Saudi Arabia",date:"2026-06-26",time:"02:00+1"},
-  {id:64,group:"H",home:"Uruguay",away:"Spain",date:"2026-06-26",time:"02:00+1"},
-  {id:65,group:"G",home:"Egypt",away:"Iran",date:"2026-06-26",time:"07:00+1"},
-  {id:66,group:"G",home:"New Zealand",away:"Belgium",date:"2026-06-26",time:"07:00+1"},
-  {id:67,group:"L",home:"Panama",away:"England",date:"2026-06-27",time:"22:00"},
-  {id:68,group:"L",home:"Croatia",away:"Ghana",date:"2026-06-27",time:"22:00"},
-  {id:69,group:"K",home:"Colombia",away:"Portugal",date:"2026-06-27",time:"02:30+1"},
-  {id:70,group:"K",home:"DR Congo",away:"Uzbekistan",date:"2026-06-27",time:"02:30+1"},
-  {id:71,group:"J",home:"Algeria",away:"Austria",date:"2026-06-27",time:"04:00+1"},
-  {id:72,group:"J",home:"Jordan",away:"Argentina",date:"2026-06-27",time:"04:00+1"},
+  {id:1,group:"A",home:"Mexico",away:"South Africa",date:"2026-06-11",time:"20:00"},
+  {id:2,group:"A",home:"South Korea",away:"Czechia",date:"2026-06-12",time:"03:00"},
+  {id:3,group:"B",home:"Canada",away:"Bosnia and Herzegovina",date:"2026-06-12",time:"20:00"},
+  {id:4,group:"D",home:"USA",away:"Paraguay",date:"2026-06-13",time:"02:00"},
+  {id:5,group:"B",home:"Qatar",away:"Switzerland",date:"2026-06-13",time:"20:00"},
+  {id:6,group:"C",home:"Brazil",away:"Morocco",date:"2026-06-14",time:"00:00"},
+  {id:7,group:"C",home:"Haiti",away:"Scotland",date:"2026-06-14",time:"02:00"},
+  {id:8,group:"D",home:"Australia",away:"Turkey",date:"2026-06-14",time:"05:00"},
+  {id:9,group:"E",home:"Germany",away:"Curacao",date:"2026-06-14",time:"19:00"},
+  {id:10,group:"F",home:"Netherlands",away:"Japan",date:"2026-06-14",time:"22:00"},
+  {id:11,group:"E",home:"Ivory Coast",away:"Ecuador",date:"2026-06-15",time:"01:00"},
+  {id:12,group:"F",home:"Sweden",away:"Tunisia",date:"2026-06-15",time:"05:00"},
+  {id:13,group:"H",home:"Spain",away:"Cape Verde",date:"2026-06-15",time:"18:00"},
+  {id:14,group:"G",home:"Belgium",away:"Egypt",date:"2026-06-16",time:"00:00"},
+  {id:15,group:"H",home:"Saudi Arabia",away:"Uruguay",date:"2026-06-16",time:"00:00"},
+  {id:16,group:"G",home:"Iran",away:"New Zealand",date:"2026-06-16",time:"06:00"},
+  {id:17,group:"I",home:"France",away:"Senegal",date:"2026-06-16",time:"21:00"},
+  {id:18,group:"I",home:"Iraq",away:"Norway",date:"2026-06-17",time:"00:00"},
+  {id:19,group:"J",home:"Argentina",away:"Algeria",date:"2026-06-17",time:"04:00"},
+  {id:20,group:"J",home:"Austria",away:"Jordan",date:"2026-06-17",time:"09:00"},
+  {id:21,group:"K",home:"Portugal",away:"DR Congo",date:"2026-06-17",time:"20:00"},
+  {id:22,group:"L",home:"England",away:"Croatia",date:"2026-06-17",time:"23:00"},
+  {id:23,group:"L",home:"Ghana",away:"Panama",date:"2026-06-18",time:"01:00"},
+  {id:24,group:"K",home:"Uzbekistan",away:"Colombia",date:"2026-06-18",time:"05:00"},
+  {id:25,group:"A",home:"Czechia",away:"South Africa",date:"2026-06-18",time:"18:00"},
+  {id:26,group:"B",home:"Switzerland",away:"Bosnia and Herzegovina",date:"2026-06-19",time:"00:00"},
+  {id:27,group:"B",home:"Canada",away:"Qatar",date:"2026-06-19",time:"03:00"},
+  {id:28,group:"A",home:"Mexico",away:"South Korea",date:"2026-06-19",time:"04:00"},
+  {id:29,group:"C",home:"Scotland",away:"Morocco",date:"2026-06-20",time:"00:00"},
+  {id:30,group:"D",home:"USA",away:"Australia",date:"2026-06-20",time:"00:00"},
+  {id:31,group:"C",home:"Brazil",away:"Haiti",date:"2026-06-20",time:"03:00"},
+  {id:32,group:"D",home:"Turkey",away:"Paraguay",date:"2026-06-20",time:"09:00"},
+  {id:33,group:"F",home:"Netherlands",away:"Sweden",date:"2026-06-20",time:"20:00"},
+  {id:34,group:"E",home:"Germany",away:"Ivory Coast",date:"2026-06-20",time:"22:00"},
+  {id:35,group:"E",home:"Ecuador",away:"Curacao",date:"2026-06-21",time:"05:00"},
+  {id:36,group:"F",home:"Tunisia",away:"Japan",date:"2026-06-21",time:"07:00"},
+  {id:37,group:"H",home:"Spain",away:"Saudi Arabia",date:"2026-06-21",time:"18:00"},
+  {id:38,group:"G",home:"Belgium",away:"Iran",date:"2026-06-22",time:"00:00"},
+  {id:39,group:"H",home:"Uruguay",away:"Cape Verde",date:"2026-06-22",time:"00:00"},
+  {id:40,group:"G",home:"New Zealand",away:"Egypt",date:"2026-06-22",time:"06:00"},
+  {id:41,group:"J",home:"Argentina",away:"Austria",date:"2026-06-22",time:"20:00"},
+  {id:42,group:"I",home:"France",away:"Iraq",date:"2026-06-22",time:"23:00"},
+  {id:43,group:"I",home:"Norway",away:"Senegal",date:"2026-06-23",time:"02:00"},
+  {id:44,group:"J",home:"Jordan",away:"Algeria",date:"2026-06-23",time:"08:00"},
+  {id:45,group:"K",home:"Portugal",away:"Uzbekistan",date:"2026-06-23",time:"20:00"},
+  {id:46,group:"L",home:"England",away:"Ghana",date:"2026-06-23",time:"22:00"},
+  {id:47,group:"L",home:"Panama",away:"Croatia",date:"2026-06-24",time:"01:00"},
+  {id:48,group:"K",home:"Colombia",away:"DR Congo",date:"2026-06-24",time:"05:00"},
+  {id:49,group:"B",home:"Switzerland",away:"Canada",date:"2026-06-25",time:"00:00"},
+  {id:50,group:"B",home:"Bosnia and Herzegovina",away:"Qatar",date:"2026-06-25",time:"00:00"},
+  {id:51,group:"C",home:"Scotland",away:"Brazil",date:"2026-06-25",time:"00:00"},
+  {id:52,group:"C",home:"Morocco",away:"Haiti",date:"2026-06-25",time:"00:00"},
+  {id:53,group:"A",home:"Czechia",away:"Mexico",date:"2026-06-25",time:"04:00"},
+  {id:54,group:"A",home:"South Africa",away:"South Korea",date:"2026-06-25",time:"04:00"},
+  {id:55,group:"E",home:"Ecuador",away:"Germany",date:"2026-06-25",time:"22:00"},
+  {id:56,group:"E",home:"Curacao",away:"Ivory Coast",date:"2026-06-25",time:"22:00"},
+  {id:57,group:"F",home:"Japan",away:"Sweden",date:"2026-06-26",time:"02:00"},
+  {id:58,group:"F",home:"Tunisia",away:"Netherlands",date:"2026-06-26",time:"02:00"},
+  {id:59,group:"D",home:"Turkey",away:"USA",date:"2026-06-26",time:"07:00"},
+  {id:60,group:"D",home:"Paraguay",away:"Australia",date:"2026-06-26",time:"07:00"},
+  {id:61,group:"I",home:"Norway",away:"France",date:"2026-06-26",time:"21:00"},
+  {id:62,group:"I",home:"Senegal",away:"Iraq",date:"2026-06-26",time:"21:00"},
+  {id:63,group:"H",home:"Cape Verde",away:"Saudi Arabia",date:"2026-06-27",time:"03:00"},
+  {id:64,group:"H",home:"Uruguay",away:"Spain",date:"2026-06-27",time:"03:00"},
+  {id:65,group:"G",home:"Egypt",away:"Iran",date:"2026-06-27",time:"08:00"},
+  {id:66,group:"G",home:"New Zealand",away:"Belgium",date:"2026-06-27",time:"08:00"},
+  {id:67,group:"L",home:"Panama",away:"England",date:"2026-06-27",time:"23:00"},
+  {id:68,group:"L",home:"Croatia",away:"Ghana",date:"2026-06-27",time:"23:00"},
+  {id:69,group:"K",home:"Colombia",away:"Portugal",date:"2026-06-28",time:"03:30"},
+  {id:70,group:"K",home:"DR Congo",away:"Uzbekistan",date:"2026-06-28",time:"03:30"},
+  {id:71,group:"J",home:"Algeria",away:"Austria",date:"2026-06-28",time:"05:00"},
+  {id:72,group:"J",home:"Jordan",away:"Argentina",date:"2026-06-28",time:"05:00"},
 ];
 
 const ALL_TEAMS = ["Algeria","Argentina","Australia","Austria","Belgium","Bosnia and Herzegovina","Brazil","Canada","Cape Verde","Czechia","Colombia","Croatia","Curacao","DR Congo","Ecuador","Egypt","England","France","Germany","Ghana","Haiti","Iran","Iraq","Ivory Coast","Japan","Jordan","Mexico","Morocco","Netherlands","New Zealand","Norway","Panama","Paraguay","Portugal","Qatar","Saudi Arabia","Scotland","Senegal","South Africa","South Korea","Spain","Sweden","Switzerland","Tunisia","Turkey","Uruguay","USA","Uzbekistan"];
 
-const DEPARTMENTS = ["Art & Design","Business Studies","Drama","English","Geography","History", "Health & Social Care", "ICT & Computing","Languages","Mathematics","Music","PE & Sport","PSHE","Religious Studies","Science","SEN & Inclusion","Sixth Form","Social Sciences","Other"];
+const DEPARTMENTS = ["Art & Design","Business Studies","Dance","Drama","English","Film Studies","Geography","Health & Social Care","History","ICT & Computing","Languages","Mathematics","Music","PE & Sport","PSHE","Religious Studies","Science","SEN & Inclusion","Sixth Form","Social Sciences","Other"];
 
 const FLAGS = {
   Mexico:"🇲🇽","South Africa":"🇿🇦","South Korea":"🇰🇷",Czechia:"🇨🇿",
@@ -394,6 +394,7 @@ function PredictView({ users, saveUser, session, setSession, closed, sessionUser
   };
 
   const setPred = (fid,val) => setPreds(p=>({...p,[fid]:val}));
+
   const total = Object.keys(preds).length;
   const allDone = total===FIXTURES.length;
 
@@ -502,12 +503,19 @@ function PredictView({ users, saveUser, session, setSession, closed, sessionUser
 // ─── FIXTURES ─────────────────────────────────────────────────────────────────
 function FixturesView({ results, leaderboard }) {
   const [filter, setFilter] = useState("All");
+  const [expandedFixture, setExpandedFixture] = useState(null);
   const byDate={};
   FIXTURES.forEach(f=>{if(!byDate[f.date])byDate[f.date]=[];byDate[f.date].push(f);});
   const getPredStats = fid => {
     let h=0,d=0,a=0;
-    leaderboard.forEach(u=>{const p=(u.predictions||{})[fid];if(p==="H")h++;else if(p==="D")d++;else if(p==="A")a++;});
-    return {h,d,a,total:h+d+a};
+    const hUsers=[],dUsers=[],aUsers=[];
+    leaderboard.forEach(u=>{
+      const p=(u.predictions||{})[fid];
+      if(p==="H"){h++;hUsers.push(u.name);}
+      else if(p==="D"){d++;dUsers.push(u.name);}
+      else if(p==="A"){a++;aUsers.push(u.name);}
+    });
+    return {h,d,a,total:h+d+a,hUsers,dUsers,aUsers};
   };
   const formatDate = s => new Date(s+"T12:00:00Z").toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
   const dates = Object.keys(byDate).sort();
@@ -516,7 +524,7 @@ function FixturesView({ results, leaderboard }) {
     <div>
       <div className="card" style={{marginBottom:12}}>
         <div className="section-title" style={{marginBottom:8}}>📅 Group Stage Fixtures</div>
-        <p style={{fontSize:13,color:"#666",marginBottom:12}}>All times in GMT. Prediction stats update as results are entered.</p>
+        <p style={{fontSize:13,color:"#666",marginBottom:12}}>All times in BST. Tap a fixture to see who predicted what.</p>
         <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
           <button className={`group-tab${filter==="All"?" active":""}`} onClick={()=>setFilter("All")}>All Groups</button>
           {Object.keys(GROUPS).map(g=>(
@@ -532,8 +540,9 @@ function FixturesView({ results, leaderboard }) {
             <div className="date-header">📆 {formatDate(date)}</div>
             {dayF.map(f=>{
               const res=results[f.id],stats=getPredStats(f.id);
+              const isExpanded=expandedFixture===f.id;
               return (
-                <div key={f.id} className="fix-card">
+                <div key={f.id} className="fix-card" style={{cursor:"pointer"}} onClick={()=>setExpandedFixture(isExpanded?null:f.id)}>
                   <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
                     <div style={{fontSize:14,fontWeight:700,flex:1}}>{FLAGS[f.home]||"🏳"} {f.home}</div>
                     <div style={{fontSize:11,color:"#bbb",fontWeight:700}}>vs</div>
@@ -542,9 +551,12 @@ function FixturesView({ results, leaderboard }) {
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:6}}>
                     <div style={{display:"flex",gap:6,alignItems:"center"}}>
                       <span style={{fontSize:10,fontWeight:800,background:"#ede8f8",color:"#5c3896",borderRadius:10,padding:"2px 8px"}}>Group {f.group}</span>
-                      <span style={{fontSize:11,color:"#aaa",fontWeight:600}}>🕐 {f.time.replace("+1","")} GMT</span>
+                      <span style={{fontSize:11,color:"#aaa",fontWeight:600}}>🕐 {f.time} BST</span>
                     </div>
-                    {res?<span className="badge badge-green">{res==="H"?`${f.home} win`:res==="D"?"Draw":`${f.away} win`}</span>:<span className="badge badge-gray">No result yet</span>}
+                    <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                      {res?<span className="badge badge-green">{res==="H"?`${f.home} win`:res==="D"?"Draw":`${f.away} win`}</span>:<span className="badge badge-gray">No result yet</span>}
+                      <span style={{fontSize:14,color:"#d4c8e8"}}>{isExpanded?"▲":"▼"}</span>
+                    </div>
                   </div>
                   {stats.total>0&&(
                     <div style={{marginTop:10,borderTop:"1px solid #f5f0fc",paddingTop:8}}>
@@ -552,17 +564,31 @@ function FixturesView({ results, leaderboard }) {
                         Predictions — {stats.total} staff
                         {res&&<span style={{marginLeft:8,color:"#4e9d2d"}}>· {res==="H"?stats.h:res==="D"?stats.d:stats.a} correct ({Math.round(((res==="H"?stats.h:res==="D"?stats.d:stats.a)/stats.total)*100)}%)</span>}
                       </div>
-                      {[["H",f.home,stats.h,"#5c3896"],["D","Draw",stats.d,"#f36d21"],["A",f.away,stats.a,"#4e9d2d"]].map(([code,label,count,color])=>{
+                      {[["H",f.home,stats.h,stats.hUsers,"#5c3896"],["D","Draw",stats.d,stats.dUsers,"#f36d21"],["A",f.away,stats.a,stats.aUsers,"#4e9d2d"]].map(([code,label,count,names,color])=>{
                         const pct=stats.total>0?Math.round((count/stats.total)*100):0,correct=res&&res===code;
                         return (
-                          <div key={code} style={{display:"flex",alignItems:"center",gap:6,marginBottom:3,fontSize:11,color:"#666"}}>
-                            <span style={{minWidth:100,fontWeight:correct?700:400,color:correct?"#4e9d2d":"#666"}}>{label}{correct?" ✅":""}</span>
-                            <div className="bar-bg"><div className="bar-fill" style={{width:`${pct}%`,background:correct?"#4e9d2d":color,opacity:correct?1:0.5}}/></div>
-                            <span style={{minWidth:36,textAlign:"right",fontWeight:600,color:correct?"#4e9d2d":"#888"}}>{pct}%</span>
+                          <div key={code} style={{marginBottom:isExpanded?8:3}}>
+                            <div style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:"#666"}}>
+                              <span style={{minWidth:100,fontWeight:correct?700:400,color:correct?"#4e9d2d":"#666"}}>{label}{correct?" ✅":""}</span>
+                              <div className="bar-bg"><div className="bar-fill" style={{width:`${pct}%`,background:correct?"#4e9d2d":color,opacity:correct?1:0.5}}/></div>
+                              <span style={{minWidth:36,textAlign:"right",fontWeight:600,color:correct?"#4e9d2d":"#888"}}>{pct}%</span>
+                            </div>
+                            {isExpanded&&names.length>0&&(
+                              <div style={{marginTop:4,marginLeft:106,display:"flex",flexWrap:"wrap",gap:4}}>
+                                {names.map(n=>(
+                                  <span key={n} style={{fontSize:11,background:correct?"#e8f5e2":isExpanded?"#f5f0fc":"#f5f5f5",color:correct?"#2a6b15":"#5c3896",borderRadius:20,padding:"2px 8px",fontWeight:600}}>
+                                    {n}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         );
                       })}
                     </div>
+                  )}
+                  {stats.total===0&&isExpanded&&(
+                    <div style={{marginTop:8,fontSize:12,color:"#ccc",borderTop:"1px solid #f5f0fc",paddingTop:8}}>No predictions submitted yet</div>
                   )}
                 </div>
               );
