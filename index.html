@@ -274,7 +274,7 @@ function App() {
           {view==="fixtures" && <FixturesView results={results} leaderboard={leaderboard} saveResult={saveResult}/>}
           {view==="leaderboard" && <LeaderboardView leaderboard={leaderboard} results={results}/>}
           {view==="admin" && <AdminView results={results} saveResult={saveResult} adminMode={adminMode} setAdminMode={setAdminMode} users={users} saveUser={saveUser} deleteUser={deleteUser}/>}
-          <div style={{textAlign:"center",fontSize:11,color:"#c0b8d4",marginTop:"2rem",paddingBottom:"0.5rem"}}>v58</div>
+          <div style={{textAlign:"center",fontSize:11,color:"#c0b8d4",marginTop:"2rem",paddingBottom:"0.5rem"}}>v59</div>
         </div>
       </div>
     </>
@@ -500,6 +500,16 @@ function FixturesView({ results, leaderboard, saveResult }) {
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState("");
 
+  const NAME_MAP = {
+    "Bosnia-Herzegovina": "Bosnia and Herzegovina",
+    "United States": "USA",
+    "Curaçao": "Curacao",
+    "Cape Verde Islands": "Cape Verde",
+    "Congo DR": "DR Congo",
+  };
+
+  const normalise = name => NAME_MAP[name] || name;
+
   const handleSync = async () => {
     setSyncing(true); setSyncMsg("");
     try {
@@ -513,10 +523,10 @@ function FixturesView({ results, leaderboard, saveResult }) {
       const matches = data.matches||[];
       let updated = 0;
       for (const match of matches) {
-        const home=match.homeTeam?.name, away=match.awayTeam?.name;
+        const home=normalise(match.homeTeam?.name), away=normalise(match.awayTeam?.name);
         const homeGoals=match.score?.fullTime?.home, awayGoals=match.score?.fullTime?.away;
         if (!home||!away||homeGoals===null||awayGoals===null) continue;
-        const fixture = FIXTURES.find(f=>f.home.toLowerCase()===home.toLowerCase()||f.away.toLowerCase()===away.toLowerCase());
+        const fixture = FIXTURES.find(f=>f.home===home&&f.away===away);
         if (!fixture) continue;
         const result = homeGoals>awayGoals?"H":awayGoals>homeGoals?"A":"D";
         await saveResult(fixture.id, result);
