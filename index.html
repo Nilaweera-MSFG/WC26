@@ -113,7 +113,6 @@ const FIXTURES = [
 ];
 
 const ALL_TEAMS = ["Algeria","Argentina","Australia","Austria","Belgium","Bosnia and Herzegovina","Brazil","Canada","Cape Verde","Czechia","Colombia","Croatia","Curacao","DR Congo","Ecuador","Egypt","England","France","Germany","Ghana","Haiti","Iran","Iraq","Ivory Coast","Japan","Jordan","Mexico","Morocco","Netherlands","New Zealand","Norway","Panama","Paraguay","Portugal","Qatar","Saudi Arabia","Scotland","Senegal","South Africa","South Korea","Spain","Sweden","Switzerland","Tunisia","Turkey","Uruguay","USA","Uzbekistan"];
-
 const DEPARTMENTS = ["Art & Design","Business Studies","Dance","Drama","English","Film Studies","Geography","Health & Social Care","History","ICT & Computing","Languages","Mathematics","Music","PE & Sport","PSHE","Religious Studies","Science","SEN & Inclusion","Sixth Form","Social Sciences","Other"];
 
 const FLAGS = {
@@ -275,7 +274,7 @@ function App() {
           {view==="fixtures" && <FixturesView results={results} leaderboard={leaderboard} saveResult={saveResult}/>}
           {view==="leaderboard" && <LeaderboardView leaderboard={leaderboard} results={results}/>}
           {view==="admin" && <AdminView results={results} saveResult={saveResult} adminMode={adminMode} setAdminMode={setAdminMode} users={users} saveUser={saveUser} deleteUser={deleteUser}/>}
-          <div style={{textAlign:"center",fontSize:11,color:"#c0b8d4",marginTop:"2rem",paddingBottom:"0.5rem"}}>v57</div>
+          <div style={{textAlign:"center",fontSize:11,color:"#c0b8d4",marginTop:"2rem",paddingBottom:"0.5rem"}}>v58</div>
         </div>
       </div>
     </>
@@ -304,7 +303,7 @@ function HomeView({ closed, setView, leaderboard, results }) {
         </p>
         {closed
           ? <div className="alert alert-warn">⏰ Submissions are now <strong>closed</strong> — the tournament has begun!</div>
-          : <div className="alert alert-green">✅ Submissions open until <strong>11 June 2026, 7:00 PM GMT</strong></div>
+          : <div className="alert alert-green">✅ Submissions open until <strong>11 June 2026, 7:00 PM BST</strong></div>
         }
         <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:4}}>
           {!closed&&<button className="btn" onClick={()=>setView("predict")}>📝 Submit My Predictions</button>}
@@ -312,7 +311,6 @@ function HomeView({ closed, setView, leaderboard, results }) {
           <button className="btn btn-orange" onClick={()=>setView("fixtures")}>📅 View Fixtures</button>
         </div>
       </div>
-
       <div className="stat-grid">
         {[["⚽","72","Group Fixtures"],["👥",leaderboard.length,"Staff Entered"],["📊",`${resultsIn}/72`,"Results In"],["🏅","3 pts","Per Correct Pick"]].map(([icon,val,label])=>(
           <div key={label} className="stat-card">
@@ -322,7 +320,6 @@ function HomeView({ closed, setView, leaderboard, results }) {
           </div>
         ))}
       </div>
-
       {leaderboard.length>0&&leaderboard[0].pts>0&&(
         <div className="card">
           <div className="section-title">🏆 Top 3</div>
@@ -335,7 +332,6 @@ function HomeView({ closed, setView, leaderboard, results }) {
           ))}
         </div>
       )}
-
       {leaderboard.length>0&&(
         <div className="card">
           <div className="section-title">❤️ Staff's Favourite Teams</div>
@@ -364,9 +360,6 @@ function PredictView({ users, saveUser, session, setSession, closed, sessionUser
   const [name, setName] = useState("");
   const [err, setErr] = useState("");
   const [saving, setSaving] = useState(false);
-  const [syncing, setSyncing] = useState(false);
-  const [syncMsg, setSyncMsg] = useState("");
-  const FOOTBALL_API_KEY = "26ae3366a44d4b248f7bbeb5485556cd";
   const [department, setDepartment] = useState("");
   const [favTeam1, setFavTeam1] = useState(sessionUser?.favourite_team_1||"");
   const [favTeam2, setFavTeam2] = useState(sessionUser?.favourite_team_2||"");
@@ -398,7 +391,6 @@ function PredictView({ users, saveUser, session, setSession, closed, sessionUser
   };
 
   const setPred = (fid,val) => setPreds(p=>({...p,[fid]:val}));
-
   const total = Object.keys(preds).length;
   const allDone = total===FIXTURES.length;
 
@@ -407,15 +399,12 @@ function PredictView({ users, saveUser, session, setSession, closed, sessionUser
     setSaving(true);
     const e = email.trim().toLowerCase()||session;
     await saveUser({
-      email:e,
-      name:name||sessionUser?.name,
-      user_type:"Staff",
+      email:e, name:name||sessionUser?.name, user_type:"Staff",
       department:department||sessionUser?.department,
       favourite_team_1:favTeam1||sessionUser?.favourite_team_1,
       favourite_team_2:favTeam2||sessionUser?.favourite_team_2,
       favourite_team_3:favTeam3||sessionUser?.favourite_team_3,
-      predictions:preds,
-      submitted:true,
+      predictions:preds, submitted:true,
     });
     setSaving(false);
   };
@@ -444,7 +433,7 @@ function PredictView({ users, saveUser, session, setSession, closed, sessionUser
       </select>
       <div style={{fontSize:13,fontWeight:700,color:"#5c3896",marginBottom:6}}>Favourite teams <span style={{fontWeight:400,color:"#aaa"}}>(pick your top 3)</span></div>
       <div style={{fontSize:12,color:"#6d6e71",marginBottom:10}}>🥇 3pts · 🥈 2pts · 🥉 1pt — used to rank the staff's favourite teams</div>
-      {[["favTeam1","🥇 1st choice",favTeam1,setFavTeam1],["favTeam2","🥈 2nd choice",favTeam2,setFavTeam2],["favTeam3","🥉 3rd choice",favTeam3,setFavTeam3]].map(([field,label,val,setter],idx)=>{
+      {[["f1","🥇 1st choice",favTeam1,setFavTeam1],["f2","🥈 2nd choice",favTeam2,setFavTeam2],["f3","🥉 3rd choice",favTeam3,setFavTeam3]].map(([field,label,val,setter],idx)=>{
         const taken=[favTeam1,favTeam2,favTeam3].filter((_,i)=>i!==idx).filter(Boolean);
         return (
           <div key={field} style={{marginBottom:10}}>
@@ -516,42 +505,33 @@ function FixturesView({ results, leaderboard, saveResult }) {
     try {
       const res = await fetch(FUNCTION_URL, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${SUPABASE_KEY}`,
-        },
-        body: JSON.stringify({ action: "sync_results" }),
+        headers: { "Content-Type":"application/json", "Authorization":`Bearer ${SUPABASE_KEY}` },
+        body: JSON.stringify({ action:"sync_results" }),
       });
       if (!res.ok) { setSyncMsg("❌ API error — please try again later."); setSyncing(false); return; }
       const data = await res.json();
-      const matches = data.matches || [];
+      const matches = data.matches||[];
       let updated = 0;
       for (const match of matches) {
-        const home = match.homeTeam?.name;
-        const away = match.awayTeam?.name;
-        const homeGoals = match.score?.fullTime?.home;
-        const awayGoals = match.score?.fullTime?.away;
-        if (home===undefined||away===undefined||homeGoals===null||awayGoals===null) continue;
-        const fixture = FIXTURES.find(f =>
-          f.home.toLowerCase()===home.toLowerCase() ||
-          f.away.toLowerCase()===away.toLowerCase()
-        );
+        const home=match.homeTeam?.name, away=match.awayTeam?.name;
+        const homeGoals=match.score?.fullTime?.home, awayGoals=match.score?.fullTime?.away;
+        if (!home||!away||homeGoals===null||awayGoals===null) continue;
+        const fixture = FIXTURES.find(f=>f.home.toLowerCase()===home.toLowerCase()||f.away.toLowerCase()===away.toLowerCase());
         if (!fixture) continue;
-        const result = homeGoals > awayGoals ? "H" : awayGoals > homeGoals ? "A" : "D";
+        const result = homeGoals>awayGoals?"H":awayGoals>homeGoals?"A":"D";
         await saveResult(fixture.id, result);
         updated++;
       }
       setSyncMsg(`✅ ${updated} result${updated!==1?"s":""} synced.`);
-    } catch(e) {
-      setSyncMsg("❌ Network error. Please try again.");
-    }
+    } catch(e) { setSyncMsg("❌ Network error. Please try again."); }
     setSyncing(false);
   };
+
   const byDate={};
   FIXTURES.forEach(f=>{if(!byDate[f.date])byDate[f.date]=[];byDate[f.date].push(f);});
+
   const getPredStats = fid => {
-    let h=0,d=0,a=0;
-    const hUsers=[],dUsers=[],aUsers=[];
+    let h=0,d=0,a=0; const hUsers=[],dUsers=[],aUsers=[];
     leaderboard.forEach(u=>{
       const p=(u.predictions||{})[fid];
       if(p==="H"){h++;hUsers.push(u.name);}
@@ -560,9 +540,11 @@ function FixturesView({ results, leaderboard, saveResult }) {
     });
     return {h,d,a,total:h+d+a,hUsers,dUsers,aUsers};
   };
+
   const formatDate = s => new Date(s+"T12:00:00Z").toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
   const dates = Object.keys(byDate).sort();
   const filteredDates = filter==="All"?dates:dates.filter(d=>byDate[d].some(f=>f.group===filter));
+
   return (
     <div>
       <div className="card" style={{marginBottom:12}}>
@@ -586,8 +568,7 @@ function FixturesView({ results, leaderboard, saveResult }) {
           <div key={date}>
             <div className="date-header">📆 {formatDate(date)}</div>
             {dayF.map(f=>{
-              const res=results[f.id],stats=getPredStats(f.id);
-              const isExpanded=expandedFixture===f.id;
+              const res=results[f.id], stats=getPredStats(f.id), isExpanded=expandedFixture===f.id;
               return (
                 <div key={f.id} className="fix-card" style={{cursor:"pointer"}} onClick={()=>setExpandedFixture(isExpanded?null:f.id)}>
                   <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
@@ -612,7 +593,7 @@ function FixturesView({ results, leaderboard, saveResult }) {
                         {res&&<span style={{marginLeft:8,color:"#4e9d2d"}}>· {res==="H"?stats.h:res==="D"?stats.d:stats.a} correct ({Math.round(((res==="H"?stats.h:res==="D"?stats.d:stats.a)/stats.total)*100)}%)</span>}
                       </div>
                       {[["H",f.home,stats.h,stats.hUsers,"#5c3896"],["D","Draw",stats.d,stats.dUsers,"#f36d21"],["A",f.away,stats.a,stats.aUsers,"#4e9d2d"]].map(([code,label,count,names,color])=>{
-                        const pct=stats.total>0?Math.round((count/stats.total)*100):0,correct=res&&res===code;
+                        const pct=stats.total>0?Math.round((count/stats.total)*100):0, correct=res&&res===code;
                         return (
                           <div key={code} style={{marginBottom:isExpanded?8:3}}>
                             <div style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:"#666"}}>
@@ -623,9 +604,7 @@ function FixturesView({ results, leaderboard, saveResult }) {
                             {isExpanded&&names.length>0&&(
                               <div style={{marginTop:4,marginLeft:106,display:"flex",flexWrap:"wrap",gap:4}}>
                                 {names.map(n=>(
-                                  <span key={n} style={{fontSize:11,background:correct?"#e8f5e2":isExpanded?"#f5f0fc":"#f5f5f5",color:correct?"#2a6b15":"#5c3896",borderRadius:20,padding:"2px 8px",fontWeight:600}}>
-                                    {n}
-                                  </span>
+                                  <span key={n} style={{fontSize:11,background:correct?"#e8f5e2":"#f5f0fc",color:correct?"#2a6b15":"#5c3896",borderRadius:20,padding:"2px 8px",fontWeight:600}}>{n}</span>
                                 ))}
                               </div>
                             )}
@@ -651,14 +630,12 @@ function FixturesView({ results, leaderboard, saveResult }) {
 function LeaderboardView({ leaderboard, results }) {
   const [filterDept, setFilterDept] = useState("All");
   const [selectedUser, setSelectedUser] = useState(null);
-
   const filtered = leaderboard.filter(u=>filterDept==="All"||u.department===filterDept);
 
   if (selectedUser) {
-    const u = leaderboard.find(x=>x.email===selectedUser);
+    const u=leaderboard.find(x=>x.email===selectedUser);
     if (!u) return null;
-    const preds=u.predictions||{};
-    const resultsIn=Object.keys(results).length;
+    const preds=u.predictions||{}, resultsIn=Object.keys(results).length;
     return (
       <div>
         <div className="card card-accent" style={{marginBottom:12}}>
@@ -682,9 +659,7 @@ function LeaderboardView({ leaderboard, results }) {
               <div className="section-title">Group {g}</div>
               {gFixtures.map(f=>{
                 const pred=preds[f.id],res=results[f.id];
-                const isCorrect=pred&&res&&pred===res;
-                const isWrong=pred&&res&&pred!==res;
-                const isPending=pred&&!res;
+                const isCorrect=pred&&res&&pred===res, isWrong=pred&&res&&pred!==res, isPending=pred&&!res;
                 const predLabel=pred==="H"?`${f.home} win`:pred==="D"?"Draw":pred==="A"?`${f.away} win`:null;
                 const resLabel=res==="H"?`${f.home} win`:res==="D"?"Draw":res==="A"?`${f.away} win`:null;
                 return (
@@ -774,41 +749,33 @@ function AdminView({ results, saveResult, adminMode, setAdminMode, users, saveUs
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [subSaved, setSubSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState("");
 
   const handleSync = async () => {
     setSyncing(true); setSyncMsg("");
     try {
       const res = await fetch(FUNCTION_URL, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${SUPABASE_KEY}`,
-        },
-        body: JSON.stringify({ action: "sync_results" }),
+        headers: { "Content-Type":"application/json", "Authorization":`Bearer ${SUPABASE_KEY}` },
+        body: JSON.stringify({ action:"sync_results" }),
       });
-      if (!res.ok) { setSyncMsg("❌ API error — check your API key or try again later."); setSyncing(false); return; }
+      if (!res.ok) { setSyncMsg("❌ API error — please try again later."); setSyncing(false); return; }
       const data = await res.json();
-      const matches = data.matches || [];
+      const matches = data.matches||[];
       let updated = 0;
       for (const match of matches) {
-        const home = match.homeTeam?.name;
-        const away = match.awayTeam?.name;
-        const homeGoals = match.score?.fullTime?.home;
-        const awayGoals = match.score?.fullTime?.away;
-        if (home===undefined||away===undefined||homeGoals===null||awayGoals===null) continue;
-        const fixture = FIXTURES.find(f =>
-          f.home.toLowerCase()===home.toLowerCase() ||
-          f.away.toLowerCase()===away.toLowerCase()
-        );
+        const home=match.homeTeam?.name, away=match.awayTeam?.name;
+        const homeGoals=match.score?.fullTime?.home, awayGoals=match.score?.fullTime?.away;
+        if (!home||!away||homeGoals===null||awayGoals===null) continue;
+        const fixture = FIXTURES.find(f=>f.home.toLowerCase()===home.toLowerCase()||f.away.toLowerCase()===away.toLowerCase());
         if (!fixture) continue;
-        const result = homeGoals > awayGoals ? "H" : awayGoals > homeGoals ? "A" : "D";
+        const result = homeGoals>awayGoals?"H":awayGoals>homeGoals?"A":"D";
         await saveResult(fixture.id, result);
         updated++;
       }
       setSyncMsg(`✅ Synced ${updated} result${updated!==1?"s":""} successfully.`);
-    } catch(e) {
-      setSyncMsg("❌ Network error. Please try again.");
-    }
+    } catch(e) { setSyncMsg("❌ Network error. Please try again."); }
     setSyncing(false);
   };
 
@@ -821,9 +788,7 @@ function AdminView({ results, saveResult, adminMode, setAdminMode, users, saveUs
   };
 
   const handleSaveResult = async (fid,val) => {
-    setSaved(false);
-    await saveResult(fid,val);
-    setSaved(true);
+    setSaved(false); await saveResult(fid,val); setSaved(true);
     setTimeout(()=>setSaved(false),2000);
   };
 
@@ -954,8 +919,7 @@ function AdminView({ results, saveResult, adminMode, setAdminMode, users, saveUs
                     <div style={{fontSize:14,fontWeight:700}}>{u.name||"—"}</div>
                     <div style={{fontSize:12,color:"#6d6e71"}}>{u.email}</div>
                     <div style={{fontSize:11,color:"#bbb",marginTop:2}}>
-                      {u.department||"—"}
-                      {" · "}{Object.keys(u.predictions||{}).length}/72 predictions
+                      {u.department||"—"} · {Object.keys(u.predictions||{}).length}/72 predictions
                       {" · "}<span style={{color:u.submitted?"#4e9d2d":"#f36d21",fontWeight:700}}>{u.submitted?"🔒 Locked":"🔓 Unlocked"}</span>
                     </div>
                   </div>
