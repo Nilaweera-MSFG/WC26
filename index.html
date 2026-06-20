@@ -272,9 +272,10 @@ function App() {
         <div className="content">
           {view==="home" && <HomeView closed={closed} setView={setView} leaderboard={leaderboard} results={results}/>}
           {view==="predict" && <PredictView users={users} saveUser={saveUser} session={session} setSession={setSession} closed={closed} sessionUser={sessionUser}/>}
-          {view==="fixtures" && <FixturesView results={results} leaderboard={leaderboard}/>}
+          {view==="fixtures" && <FixturesView results={results} leaderboard={leaderboard} saveResult={saveResult}/>}
           {view==="leaderboard" && <LeaderboardView leaderboard={leaderboard} results={results}/>}
           {view==="admin" && <AdminView results={results} saveResult={saveResult} adminMode={adminMode} setAdminMode={setAdminMode} users={users} saveUser={saveUser} deleteUser={deleteUser}/>}
+          <div style={{textAlign:"center",fontSize:11,color:"#c0b8d4",marginTop:"2rem",paddingBottom:"0.5rem"}}>v41</div>
         </div>
       </div>
     </>
@@ -504,9 +505,45 @@ function PredictView({ users, saveUser, session, setSession, closed, sessionUser
 }
 
 // ─── FIXTURES ─────────────────────────────────────────────────────────────────
-function FixturesView({ results, leaderboard }) {
+function FixturesView({ results, leaderboard, saveResult }) {
   const [filter, setFilter] = useState("All");
   const [expandedFixture, setExpandedFixture] = useState(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState("");
+
+  const FOOTBALL_API_KEY = "26ae3366a44d4b248f7bbeb5485556cd";
+
+  const handleSync = async () => {
+    setSyncing(true); setSyncMsg("");
+    try {
+      const res = await fetch("https://api.football-data.org/v4/competitions/WC/matches?stage=GROUP_STAGE&status=FINISHED", {
+        headers: { "X-Auth-Token": FOOTBALL_API_KEY }
+      });
+      if (!res.ok) { setSyncMsg("❌ API error — please try again later."); setSyncing(false); return; }
+      const data = await res.json();
+      const matches = data.matches || [];
+      let updated = 0;
+      for (const match of matches) {
+        const home = match.homeTeam?.name;
+        const away = match.awayTeam?.name;
+        const homeGoals = match.score?.fullTime?.home;
+        const awayGoals = match.score?.fullTime?.away;
+        if (home===undefined||away===undefined||homeGoals===null||awayGoals===null) continue;
+        const fixture = FIXTURES.find(f =>
+          f.home.toLowerCase()===home.toLowerCase() ||
+          f.away.toLowerCase()===away.toLowerCase()
+        );
+        if (!fixture) continue;
+        const result = homeGoals > awayGoals ? "H" : awayGoals > homeGoals ? "A" : "D";
+        await saveResult(fixture.id, result);
+        updated++;
+      }
+      setSyncMsg(`✅ ${updated} result${updated!==1?"s":""} synced.`);
+    } catch(e) {
+      setSyncMsg("❌ Network error. Please try again.");
+    }
+    setSyncing(false);
+  };
   const byDate={};
   FIXTURES.forEach(f=>{if(!byDate[f.date])byDate[f.date]=[];byDate[f.date].push(f);});
   const getPredStats = fid => {
@@ -528,6 +565,10 @@ function FixturesView({ results, leaderboard }) {
       <div className="card" style={{marginBottom:12}}>
         <div className="section-title" style={{marginBottom:8}}>📅 Group Stage Fixtures</div>
         <p style={{fontSize:13,color:"#666",marginBottom:12}}>All times in BST. Tap a fixture to see who predicted what.</p>
+        <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12,flexWrap:"wrap"}}>
+          <button className="btn btn-green" style={{fontSize:13,padding:"8px 16px"}} onClick={handleSync} disabled={syncing}>{syncing?"⏳ Syncing...":"🔄 Sync Results"}</button>
+          {syncMsg&&<span style={{fontSize:12,color:syncMsg.startsWith("✅")?"#4e9d2d":"#c0392b",fontWeight:600}}>{syncMsg}</span>}
+        </div>
         <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
           <button className={`group-tab${filter==="All"?" active":""}`} onClick={()=>setFilter("All")}>All Groups</button>
           {Object.keys(GROUPS).map(g=>(
