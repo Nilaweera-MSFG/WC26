@@ -365,40 +365,7 @@ function PredictView({ users, saveUser, session, setSession, closed, sessionUser
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState("");
-
   const FOOTBALL_API_KEY = "26ae3366a44d4b248f7bbeb5485556cd";
-
-  const handleSync = async () => {
-    setSyncing(true); setSyncMsg("");
-    try {
-      const res = await fetch("https://api.football-data.org/v4/competitions/WC/matches?stage=GROUP_STAGE&status=FINISHED", {
-        headers: { "X-Auth-Token": FOOTBALL_API_KEY }
-      });
-      if (!res.ok) { setSyncMsg("❌ API error — check your API key or try again later."); setSyncing(false); return; }
-      const data = await res.json();
-      const matches = data.matches || [];
-      let updated = 0;
-      for (const match of matches) {
-        const home = match.homeTeam?.name;
-        const away = match.awayTeam?.name;
-        const homeGoals = match.score?.fullTime?.home;
-        const awayGoals = match.score?.fullTime?.away;
-        if (home===undefined||away===undefined||homeGoals===null||awayGoals===null) continue;
-        const fixture = FIXTURES.find(f =>
-          f.home.toLowerCase()===home.toLowerCase() ||
-          f.away.toLowerCase()===away.toLowerCase()
-        );
-        if (!fixture) continue;
-        const result = homeGoals > awayGoals ? "H" : awayGoals > homeGoals ? "A" : "D";
-        await saveResult(fixture.id, result);
-        updated++;
-      }
-      setSyncMsg(`✅ Synced ${updated} result${updated!==1?"s":""} successfully.`);
-    } catch(e) {
-      setSyncMsg("❌ Network error. Please try again.");
-    }
-    setSyncing(false);
-  };
   const [department, setDepartment] = useState("");
   const [favTeam1, setFavTeam1] = useState(sessionUser?.favourite_team_1||"");
   const [favTeam2, setFavTeam2] = useState(sessionUser?.favourite_team_2||"");
@@ -763,6 +730,38 @@ function AdminView({ results, saveResult, adminMode, setAdminMode, users, saveUs
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [subSaved, setSubSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const handleSync = async () => {
+    setSyncing(true); setSyncMsg("");
+    try {
+      const res = await fetch("https://api.football-data.org/v4/competitions/WC/matches?stage=GROUP_STAGE&status=FINISHED", {
+        headers: { "X-Auth-Token": FOOTBALL_API_KEY }
+      });
+      if (!res.ok) { setSyncMsg("❌ API error — check your API key or try again later."); setSyncing(false); return; }
+      const data = await res.json();
+      const matches = data.matches || [];
+      let updated = 0;
+      for (const match of matches) {
+        const home = match.homeTeam?.name;
+        const away = match.awayTeam?.name;
+        const homeGoals = match.score?.fullTime?.home;
+        const awayGoals = match.score?.fullTime?.away;
+        if (home===undefined||away===undefined||homeGoals===null||awayGoals===null) continue;
+        const fixture = FIXTURES.find(f =>
+          f.home.toLowerCase()===home.toLowerCase() ||
+          f.away.toLowerCase()===away.toLowerCase()
+        );
+        if (!fixture) continue;
+        const result = homeGoals > awayGoals ? "H" : awayGoals > homeGoals ? "A" : "D";
+        await saveResult(fixture.id, result);
+        updated++;
+      }
+      setSyncMsg(`✅ Synced ${updated} result${updated!==1?"s":""} successfully.`);
+    } catch(e) {
+      setSyncMsg("❌ Network error. Please try again.");
+    }
+    setSyncing(false);
+  };
 
   const login = async () => {
     try {
