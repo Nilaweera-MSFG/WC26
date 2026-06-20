@@ -511,13 +511,16 @@ function FixturesView({ results, leaderboard, saveResult }) {
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState("");
 
-  const FOOTBALL_API_KEY = "26ae3366a44d4b248f7bbeb5485556cd";
-
   const handleSync = async () => {
     setSyncing(true); setSyncMsg("");
     try {
-      const res = await fetch("https://api.football-data.org/v4/competitions/WC/matches?stage=GROUP_STAGE&status=FINISHED", {
-        headers: { "X-Auth-Token": FOOTBALL_API_KEY }
+      const res = await fetch(FUNCTION_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${SUPABASE_KEY}`,
+        },
+        body: JSON.stringify({ action: "sync_results" }),
       });
       if (!res.ok) { setSyncMsg("❌ API error — please try again later."); setSyncing(false); return; }
       const data = await res.json();
@@ -775,8 +778,13 @@ function AdminView({ results, saveResult, adminMode, setAdminMode, users, saveUs
   const handleSync = async () => {
     setSyncing(true); setSyncMsg("");
     try {
-      const res = await fetch("https://api.football-data.org/v4/competitions/WC/matches?stage=GROUP_STAGE&status=FINISHED", {
-        headers: { "X-Auth-Token": FOOTBALL_API_KEY }
+      const res = await fetch(FUNCTION_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${SUPABASE_KEY}`,
+        },
+        body: JSON.stringify({ action: "sync_results" }),
       });
       if (!res.ok) { setSyncMsg("❌ API error — check your API key or try again later."); setSyncing(false); return; }
       const data = await res.json();
