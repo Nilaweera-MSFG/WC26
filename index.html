@@ -275,7 +275,7 @@ function App() {
           {view==="fixtures" && <FixturesView results={results} leaderboard={leaderboard} saveResult={saveResult}/>}
           {view==="leaderboard" && <LeaderboardView leaderboard={leaderboard} results={results}/>}
           {view==="admin" && <AdminView results={results} saveResult={saveResult} adminMode={adminMode} setAdminMode={setAdminMode} users={users} saveUser={saveUser} deleteUser={deleteUser}/>}
-          <div style={{textAlign:"center",fontSize:11,color:"#c0b8d4",marginTop:"2rem",paddingBottom:"0.5rem"}}>v41</div>
+          <div style={{textAlign:"center",fontSize:11,color:"#c0b8d4",marginTop:"2rem",paddingBottom:"0.5rem"}}>v52</div>
         </div>
       </div>
     </>
@@ -364,6 +364,8 @@ function PredictView({ users, saveUser, session, setSession, closed, sessionUser
   const [name, setName] = useState("");
   const [err, setErr] = useState("");
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState("");
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState("");
   const FOOTBALL_API_KEY = "26ae3366a44d4b248f7bbeb5485556cd";
