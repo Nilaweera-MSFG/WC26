@@ -363,6 +363,42 @@ function PredictView({ users, saveUser, session, setSession, closed, sessionUser
   const [name, setName] = useState("");
   const [err, setErr] = useState("");
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState("");
+
+  const FOOTBALL_API_KEY = "26ae3366a44d4b248f7bbeb5485556cd";
+
+  const handleSync = async () => {
+    setSyncing(true); setSyncMsg("");
+    try {
+      const res = await fetch("https://api.football-data.org/v4/competitions/WC/matches?stage=GROUP_STAGE&status=FINISHED", {
+        headers: { "X-Auth-Token": FOOTBALL_API_KEY }
+      });
+      if (!res.ok) { setSyncMsg("❌ API error — check your API key or try again later."); setSyncing(false); return; }
+      const data = await res.json();
+      const matches = data.matches || [];
+      let updated = 0;
+      for (const match of matches) {
+        const home = match.homeTeam?.name;
+        const away = match.awayTeam?.name;
+        const homeGoals = match.score?.fullTime?.home;
+        const awayGoals = match.score?.fullTime?.away;
+        if (home===undefined||away===undefined||homeGoals===null||awayGoals===null) continue;
+        const fixture = FIXTURES.find(f =>
+          f.home.toLowerCase()===home.toLowerCase() ||
+          f.away.toLowerCase()===away.toLowerCase()
+        );
+        if (!fixture) continue;
+        const result = homeGoals > awayGoals ? "H" : awayGoals > homeGoals ? "A" : "D";
+        await saveResult(fixture.id, result);
+        updated++;
+      }
+      setSyncMsg(`✅ Synced ${updated} result${updated!==1?"s":""} successfully.`);
+    } catch(e) {
+      setSyncMsg("❌ Network error. Please try again.");
+    }
+    setSyncing(false);
+  };
   const [department, setDepartment] = useState("");
   const [favTeam1, setFavTeam1] = useState(sessionUser?.favourite_team_1||"");
   const [favTeam2, setFavTeam2] = useState(sessionUser?.favourite_team_2||"");
@@ -825,7 +861,11 @@ function AdminView({ results, saveResult, adminMode, setAdminMode, users, saveUs
       {activeTab==="results"&&(
         <>
           <div className="card" style={{marginBottom:12}}>
-            <p style={{fontSize:13,color:"#666"}}>Click a result to save it instantly. The leaderboard and fixtures page update in real time.</p>
+            <p style={{fontSize:13,color:"#666",marginBottom:10}}>Click a result to save it manually, or use Sync to pull the latest finished results automatically.</p>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+              <button className="btn btn-green" style={{fontSize:13,padding:"8px 16px"}} onClick={handleSync} disabled={syncing}>{syncing?"⏳ Syncing...":"🔄 Sync Results"}</button>
+              {syncMsg&&<span style={{fontSize:12,color:syncMsg.startsWith("✅")?"#4e9d2d":"#c0392b",fontWeight:600}}>{syncMsg}</span>}
+            </div>
             {saved&&<div className="ok" style={{marginTop:8}}>✅ Result saved!</div>}
           </div>
           <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
