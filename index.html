@@ -140,7 +140,7 @@ const FLAGS = {
 
 const css = `
   .app{max-width:720px;margin:0 auto;padding-bottom:3rem;background:#f8f6fc;min-height:100vh}
-  .header{background:#5c3896;color:#fff;border-radius:0 0 20px 20px;margin-bottom:1.5rem;overflow:hidden}
+  .header{background:linear-gradient(135deg,#5c3896 0%,#3d2566 40%,#2e0252 100%);color:#fff;border-radius:0 0 20px 20px;margin-bottom:1.5rem;overflow:hidden}
   .header-top{padding:1.25rem 1.5rem 0.75rem}
   .header-accent{height:6px;background:linear-gradient(90deg,#4e9d2d 0%,#f36d21 33%,#e70095 66%,#fbed1d 100%)}
   .school-name{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;opacity:.85;margin-bottom:4px;font-weight:600}
@@ -194,7 +194,7 @@ const css = `
   .bar-bg{flex:1;background:#f0eaf8;border-radius:4px;height:7px;overflow:hidden}
   .bar-fill{height:100%;border-radius:4px}
   .tabs{display:flex;gap:8px;margin-top:12px}
-  .spinner{display:flex;justify-content:center;align-items:center;padding:3rem}
+  .fixtures-sticky{position:sticky;top:0;z-index:10;background:#f8f6fc;padding-bottom:8px}
   .spin{width:36px;height:36px;border:4px solid #e8e0f0;border-top-color:#5c3896;border-radius:50%;animation:spin .8s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
 `;
@@ -276,7 +276,7 @@ function App() {
           {view==="fixtures" && <FixturesView results={results} leaderboard={leaderboard} saveResult={saveResult}/>}
           {view==="leaderboard" && <LeaderboardView leaderboard={leaderboard} results={results}/>}
           {view==="admin" && <AdminView results={results} saveResult={saveResult} adminMode={adminMode} setAdminMode={setAdminMode} users={users} saveUser={saveUser} deleteUser={deleteUser}/>}
-          <div style={{textAlign:"center",fontSize:11,color:"#c0b8d4",marginTop:"2rem",paddingBottom:"0.5rem"}}>v66</div>
+          <div style={{textAlign:"center",fontSize:11,color:"#c0b8d4",marginTop:"2rem",paddingBottom:"0.5rem"}}>v70</div>
         </div>
       </div>
     </>
@@ -285,6 +285,8 @@ function App() {
 
 // ─── PROGRESS CHART ───────────────────────────────────────────────────────────
 function ProgressChart({ leaderboard, results }) {
+  const [highlighted, setHighlighted] = useState(null);
+
   const COLORS = [
     "#5c3896","#f36d21","#42b4e5","#e70095","#4e9d2d","#b3282d","#178ea6",
     "#f7a800","#82bc00","#2e0252","#ec008c","#005cb9","#00a09b","#5e60ab",
@@ -296,9 +298,8 @@ function ProgressChart({ leaderboard, results }) {
   ];
 
   const playedFixtures = FIXTURES.filter(f=>results[f.id]);
-  const allUsers = leaderboard;
 
-  const series = allUsers.map((u,i) => {
+  const series = leaderboard.map((u,i) => {
     let pts = 0;
     const points = [0];
     playedFixtures.forEach(f => {
@@ -325,6 +326,8 @@ function ProgressChart({ leaderboard, results }) {
   const xTicks = [];
   for (let i=0; i<=matchCount; i+=xStep) xTicks.push(i);
 
+  const toggle = name => setHighlighted(h => h===name ? null : name);
+
   return (
     <div style={{overflowX:"auto"}}>
       <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",minWidth:320,fontFamily:"Nunito,sans-serif"}}>
@@ -339,23 +342,72 @@ function ProgressChart({ leaderboard, results }) {
         ))}
         <text x={PL-28} y={PT+chartH/2} textAnchor="middle" fontSize="9" fill="#888" transform={`rotate(-90,${PL-28},${PT+chartH/2})`}>Points</text>
         <text x={PL+chartW/2} y={H-1} textAnchor="middle" fontSize="9" fill="#888">Matches played</text>
-        {series.map(s=>{
+
+        {/* Dimmed lines first */}
+        {highlighted && series.filter(s=>s.name!==highlighted).map(s=>{
           const d = s.points.map((v,i)=>`${i===0?"M":"L"}${xPos(i)},${yPos(v)}`).join(" ");
-          return <path key={s.name} d={d} fill="none" stroke={s.color} strokeWidth="1.5" strokeOpacity="0.7" strokeLinejoin="round" strokeLinecap="round"/>;
+          return <path key={s.name} d={d} fill="none" stroke={s.color} strokeWidth="1" strokeOpacity="0.12" strokeLinejoin="round" strokeLinecap="round"/>;
         })}
+
+        {/* All lines (or just highlighted) */}
+        {series.filter(s=>!highlighted||s.name===highlighted).map(s=>{
+          const isHl = highlighted===s.name;
+          const d = s.points.map((v,i)=>`${i===0?"M":"L"}${xPos(i)},${yPos(v)}`).join(" ");
+          return (
+            <path key={s.name} d={d} fill="none" stroke={s.color}
+              strokeWidth={isHl?3:1.5} strokeOpacity={isHl?1:0.7}
+              strokeLinejoin="round" strokeLinecap="round"
+              style={{cursor:"pointer"}} onClick={()=>toggle(s.name)}/>
+          );
+        })}
+
+        {/* Dots */}
         {series.map(s=>{
           const last = s.points[s.points.length-1];
-          return <circle key={s.name} cx={xPos(s.points.length-1)} cy={yPos(last)} r="2.5" fill={s.color} fillOpacity="0.9"/>;
+          const isHl = highlighted===s.name;
+          const dimmed = highlighted && !isHl;
+          return (
+            <circle key={s.name} cx={xPos(s.points.length-1)} cy={yPos(last)}
+              r={isHl?4:2.5} fill={s.color} fillOpacity={dimmed?0.12:0.9}
+              style={{cursor:"pointer"}} onClick={()=>toggle(s.name)}/>
+          );
+        })}
+
+        {/* Label for highlighted line */}
+        {highlighted && series.filter(s=>s.name===highlighted).map(s=>{
+          const last = s.points[s.points.length-1];
+          return (
+            <text key={s.name} x={xPos(s.points.length-1)+6} y={yPos(last)+4}
+              fontSize="10" fontWeight="700" fill={s.color}>{s.name}</text>
+          );
         })}
       </svg>
+
+      {/* Legend */}
       <div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:8}}>
-        {series.map((u,i)=>(
-          <div key={u.name} style={{display:"flex",alignItems:"center",gap:4,fontSize:10,fontWeight:600,color:"#555"}}>
-            <div style={{width:12,height:3,borderRadius:2,background:u.color,flexShrink:0}}/>
-            <span>{u.name}</span>
-          </div>
-        ))}
+        {series.map(s=>{
+          const isHl = highlighted===s.name;
+          const dimmed = highlighted && !isHl;
+          return (
+            <div key={s.name} onClick={()=>toggle(s.name)} style={{
+              display:"flex",alignItems:"center",gap:4,fontSize:10,fontWeight:isHl?800:600,
+              color:dimmed?"#ccc":isHl?s.color:"#555",cursor:"pointer",
+              padding:"2px 6px",borderRadius:20,
+              background:isHl?"#f8f6fc":"transparent",
+              border:isHl?`1.5px solid ${s.color}`:"1.5px solid transparent",
+              transition:"all 0.15s",
+            }}>
+              <div style={{width:12,height:3,borderRadius:2,background:dimmed?"#ddd":s.color,flexShrink:0}}/>
+              <span>{s.name}</span>
+            </div>
+          );
+        })}
       </div>
+      {highlighted && (
+        <div style={{marginTop:8,fontSize:12,color:"#aaa",textAlign:"center"}}>
+          Click the name again or any line to deselect
+        </div>
+      )}
     </div>
   );
 }
@@ -382,10 +434,7 @@ function HomeView({ setView, leaderboard, results }) {
         <p style={{fontSize:14,color:"#555",lineHeight:1.65,marginBottom:12}}>
           The FIFA World Cup 2026 group stage is underway! Track the leaderboard and fixtures below.
         </p>
-        <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:4}}>
-          <button className="btn btn-green" onClick={()=>setView("leaderboard")}>🏆 View Leaderboard</button>
-          <button className="btn btn-orange" onClick={()=>setView("fixtures")}>📅 View Fixtures</button>
-        </div>
+
       </div>
       <div className="stat-grid">
         {[["⚽","72","Group Fixtures"],["👥",leaderboard.length,"Staff Entered"],["📊",`${resultsIn}/72`,"Results In"],["🏅","3 pts","Per Correct Pick"]].map(([icon,val,label])=>(
@@ -399,7 +448,7 @@ function HomeView({ setView, leaderboard, results }) {
       {leaderboard.length>0&&Object.keys(results).length>0&&(
         <div className="card">
           <div className="section-title">📈 Points Progression</div>
-          <div style={{fontSize:12,color:"#6d6e71",marginBottom:12}}>Points accumulated per match result — top 10 shown</div>
+          <div style={{fontSize:12,color:"#6d6e71",marginBottom:12}}>Points accumulated per match result</div>
           <ProgressChart leaderboard={leaderboard} results={results}/>
         </div>
       )}
@@ -495,6 +544,8 @@ function FixturesView({ results, leaderboard, saveResult }) {
     return {h,d,a,total:h+d+a,hUsers,dUsers,aUsers};
   };
 
+  const today = new Date().toISOString().slice(0,10);
+
   const scrollToDate = (date) => {
     setSelectedDate(date);
     setTimeout(() => {
@@ -505,37 +556,42 @@ function FixturesView({ results, leaderboard, saveResult }) {
 
   const hasResult = date => byDate[date]?.some(f => results[f.id]);
 
+  const isToday = date => date === today;
+  const isPast = date => date < today;
+
   return (
     <div>
-      <div className="card" style={{marginBottom:12}}>
-        <div className="section-title" style={{marginBottom:8}}>📅 Group Stage Fixtures</div>
-        <p style={{fontSize:13,color:"#666",marginBottom:12}}>All times in BST. Tap a fixture to see who predicted what.</p>
-        <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:14,flexWrap:"wrap"}}>
-          <button className="btn btn-green" style={{fontSize:13,padding:"8px 16px"}} onClick={handleSync} disabled={syncing}>{syncing?"⏳ Syncing...":"🔄 Sync Results"}</button>
-          {syncMsg&&<span style={{fontSize:12,color:syncMsg.startsWith("✅")?"#4e9d2d":"#c0392b",fontWeight:600}}>{syncMsg}</span>}
-        </div>
-
-        {/* Calendar strip */}
-        <div style={{overflowX:"auto",paddingBottom:4}}>
-          <div style={{display:"flex",gap:6,minWidth:"max-content"}}>
-            {dates.map(date=>{
-              const {day,date:d,month} = formatShort(date);
-              const active = selectedDate===date;
-              const done = hasResult(date);
-              return (
-                <button key={date} onClick={()=>scrollToDate(date)} style={{
-                  display:"flex",flexDirection:"column",alignItems:"center",
-                  padding:"6px 10px",borderRadius:10,border:`1.5px solid ${active?"#5c3896":done?"#4e9d2d":"#d4c8e8"}`,
-                  background:active?"#5c3896":done?"#e8f5e2":"#fff",
-                  color:active?"#fff":done?"#2a6b15":"#555",
-                  cursor:"pointer",fontFamily:"inherit",minWidth:46,
-                }}>
-                  <span style={{fontSize:10,fontWeight:700,textTransform:"uppercase",opacity:.8}}>{day}</span>
-                  <span style={{fontSize:18,fontWeight:800,lineHeight:1.2}}>{d}</span>
-                  <span style={{fontSize:10,fontWeight:600,opacity:.8}}>{month}</span>
-                </button>
-              );
-            })}
+      <div className="fixtures-sticky">
+        <div className="card" style={{marginBottom:0}}>
+          <div className="section-title" style={{marginBottom:8}}>📅 Group Stage Fixtures</div>
+          <p style={{fontSize:13,color:"#666",marginBottom:12}}>All times in BST. Tap a fixture to see who predicted what.</p>
+          <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:14,flexWrap:"wrap"}}>
+            <button className="btn btn-green" style={{fontSize:13,padding:"8px 16px"}} onClick={handleSync} disabled={syncing}>{syncing?"⏳ Syncing...":"🔄 Sync Results"}</button>
+            {syncMsg&&<span style={{fontSize:12,color:syncMsg.startsWith("✅")?"#4e9d2d":"#c0392b",fontWeight:600}}>{syncMsg}</span>}
+          </div>
+          <div style={{overflowX:"auto",paddingBottom:4}}>
+            <div style={{display:"flex",gap:6,minWidth:"max-content"}}>
+              {dates.map(date=>{
+                const {day,date:d,month} = formatShort(date);
+                const active = selectedDate===date;
+                const todayDate = isToday(date);
+                const past = isPast(date);
+                const borderColor = active?"#5c3896":todayDate?"#f36d21":past?"#4e9d2d":"#d4c8e8";
+                const bg = active?"#5c3896":todayDate?"#fff3ea":past?"#e8f5e2":"#fff";
+                const color = active?"#fff":todayDate?"#f36d21":past?"#2a6b15":"#555";
+                return (
+                  <button key={date} onClick={()=>scrollToDate(date)} style={{
+                    display:"flex",flexDirection:"column",alignItems:"center",
+                    padding:"6px 10px",borderRadius:10,border:`1.5px solid ${borderColor}`,
+                    background:bg,color,cursor:"pointer",fontFamily:"inherit",minWidth:46,
+                  }}>
+                    <span style={{fontSize:10,fontWeight:700,textTransform:"uppercase",opacity:.8}}>{day}</span>
+                    <span style={{fontSize:18,fontWeight:800,lineHeight:1.2}}>{d}</span>
+                    <span style={{fontSize:10,fontWeight:600,opacity:.8}}>{month}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
