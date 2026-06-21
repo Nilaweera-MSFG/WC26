@@ -20,7 +20,6 @@ const SUPABASE_URL = "https://kmavclegdxssujusxtzd.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImttYXZjbGVnZHhzc3VqdXN4dHpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzNzYyMjUsImV4cCI6MjA5NDk1MjIyNX0.J170aXs73Kk4E9z1zNgYs9YtEJzOnmnQQaP2eMNjZk4";
 const FUNCTION_URL = "https://kmavclegdxssujusxtzd.supabase.co/functions/v1/send-verification";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-const DEADLINE = new Date("2026-06-11T19:00:00Z");
 
 const GROUPS = {
   A:{teams:["Mexico","South Africa","South Korea","Czechia"]},
@@ -115,6 +114,15 @@ const FIXTURES = [
 const ALL_TEAMS = ["Algeria","Argentina","Australia","Austria","Belgium","Bosnia and Herzegovina","Brazil","Canada","Cape Verde","Czechia","Colombia","Croatia","Curacao","DR Congo","Ecuador","Egypt","England","France","Germany","Ghana","Haiti","Iran","Iraq","Ivory Coast","Japan","Jordan","Mexico","Morocco","Netherlands","New Zealand","Norway","Panama","Paraguay","Portugal","Qatar","Saudi Arabia","Scotland","Senegal","South Africa","South Korea","Spain","Sweden","Switzerland","Tunisia","Turkey","Uruguay","USA","Uzbekistan"];
 const DEPARTMENTS = ["Art & Design","Business Studies","Dance","Drama","English","Film Studies","Geography","Health & Social Care","History","ICT & Computing","Languages","Mathematics","Music","PE & Sport","PSHE","Religious Studies","Science","SEN & Inclusion","Sixth Form","Social Sciences","Other"];
 
+const NAME_MAP = {
+  "Bosnia-Herzegovina":"Bosnia and Herzegovina",
+  "United States":"USA",
+  "Curaçao":"Curacao",
+  "Cape Verde Islands":"Cape Verde",
+  "Congo DR":"DR Congo",
+};
+const normalise = name => NAME_MAP[name]||name;
+
 const FLAGS = {
   Mexico:"🇲🇽","South Africa":"🇿🇦","South Korea":"🇰🇷",Czechia:"🇨🇿",
   Canada:"🇨🇦","Bosnia and Herzegovina":"🇧🇦",Qatar:"🇶🇦",Switzerland:"🇨🇭",
@@ -195,7 +203,6 @@ function App() {
   const [view, setView] = useState("home");
   const [users, setUsers] = useState([]);
   const [results, setResults] = useState({});
-  const [session, setSession] = useState(null);
   const [adminMode, setAdminMode] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -223,8 +230,6 @@ function App() {
   const saveResult = async (fixtureId,result) => { await sb.from("results").upsert({fixture_id:fixtureId,result,updated_at:new Date().toISOString()},{onConflict:"fixture_id"}); await fetchData(); };
   const deleteUser = async (email) => { await sb.from("users").delete().eq("email",email); await fetchData(); };
 
-  const closed = new Date() >= DEADLINE;
-
   const scoreUser = (preds) => {
     let pts=0,correct=0;
     for (const [fid,pred] of Object.entries(preds||{}))
@@ -235,8 +240,6 @@ function App() {
   const leaderboard = users
     .map(u=>({...u,predictions:u.predictions||{},...scoreUser(u.predictions)}))
     .sort((a,b)=>b.pts-a.pts||b.correct-a.correct);
-
-  const sessionUser = session ? users.find(u=>u.email===session) : null;
 
   if (loading) return (
     <>
@@ -259,9 +262,9 @@ function App() {
           <div className="header-top">
             <div className="school-name">Mulberry School for Girls</div>
             <div className="app-title">World Cup 2026 Predictor ⚽</div>
-            <div className="app-sub">Staff competition — predict all 72 group stage fixtures!</div>
+            <div className="app-sub">Staff competition — group stage predictions</div>
             <div className="nav">
-              {[["home","🏠 Home"],["predict","📝 Predict"],["fixtures","📅 Fixtures"],["leaderboard","🏆 Leaderboard"],["admin","🔧 Admin"]].map(([v,label])=>(
+              {[["home","🏠 Home"],["fixtures","📅 Fixtures"],["leaderboard","🏆 Leaderboard"],["admin","🔧 Admin"]].map(([v,label])=>(
                 <button key={v} className={`nav-btn${view===v?" active":""}`} onClick={()=>setView(v)}>{label}</button>
               ))}
             </div>
@@ -269,21 +272,98 @@ function App() {
           <div className="header-accent"/>
         </div>
         <div className="content">
-          {view==="home" && <HomeView closed={closed} setView={setView} leaderboard={leaderboard} results={results}/>}
-          {view==="predict" && <PredictView users={users} saveUser={saveUser} session={session} setSession={setSession} closed={closed} sessionUser={sessionUser}/>}
+          {view==="home" && <HomeView setView={setView} leaderboard={leaderboard} results={results}/>}
           {view==="fixtures" && <FixturesView results={results} leaderboard={leaderboard} saveResult={saveResult}/>}
           {view==="leaderboard" && <LeaderboardView leaderboard={leaderboard} results={results}/>}
           {view==="admin" && <AdminView results={results} saveResult={saveResult} adminMode={adminMode} setAdminMode={setAdminMode} users={users} saveUser={saveUser} deleteUser={deleteUser}/>}
-          <div style={{textAlign:"center",fontSize:11,color:"#c0b8d4",marginTop:"2rem",paddingBottom:"0.5rem"}}>v59</div>
+          <div style={{textAlign:"center",fontSize:11,color:"#c0b8d4",marginTop:"2rem",paddingBottom:"0.5rem"}}>v66</div>
         </div>
       </div>
     </>
   );
 }
 
+// ─── PROGRESS CHART ───────────────────────────────────────────────────────────
+function ProgressChart({ leaderboard, results }) {
+  const COLORS = [
+    "#5c3896","#f36d21","#42b4e5","#e70095","#4e9d2d","#b3282d","#178ea6",
+    "#f7a800","#82bc00","#2e0252","#ec008c","#005cb9","#00a09b","#5e60ab",
+    "#78b2d8","#fbed1d","#c1d956","#252a78","#40ac48","#31c5f4","#e2231a",
+    "#662f8f","#6c6a15","#fde66b","#32647e","#4e9d2d","#f36d21","#5c3896",
+    "#42b4e5","#e70095","#b3282d","#178ea6","#f7a800","#82bc00","#2e0252",
+    "#ec008c","#005cb9","#00a09b","#5e60ab","#78b2d8","#fbed1d","#c1d956",
+    "#252a78","#40ac48","#31c5f4","#e2231a","#662f8f",
+  ];
+
+  const playedFixtures = FIXTURES.filter(f=>results[f.id]);
+  const allUsers = leaderboard;
+
+  const series = allUsers.map((u,i) => {
+    let pts = 0;
+    const points = [0];
+    playedFixtures.forEach(f => {
+      if (u.predictions[f.id] && results[f.id] === u.predictions[f.id]) pts += 3;
+      points.push(pts);
+    });
+    return { name: u.name, points, color: COLORS[i % COLORS.length] };
+  });
+
+  const maxPts = Math.max(...series.map(s=>s.points[s.points.length-1]), 3);
+  const matchCount = playedFixtures.length;
+
+  const W = 600, H = 300, PL = 36, PR = 12, PT = 12, PB = 28;
+  const chartW = W-PL-PR, chartH = H-PT-PB;
+
+  const xPos = i => PL + (matchCount===0 ? 0 : (i/matchCount)*chartW);
+  const yPos = v => PT + chartH - (v/maxPts)*chartH;
+
+  const step = maxPts <= 9 ? 3 : maxPts <= 18 ? 6 : maxPts <= 30 ? 9 : 12;
+  const yTicks = [];
+  for (let v=0; v<=maxPts; v+=step) yTicks.push(v);
+
+  const xStep = matchCount <= 12 ? 2 : matchCount <= 24 ? 4 : 6;
+  const xTicks = [];
+  for (let i=0; i<=matchCount; i+=xStep) xTicks.push(i);
+
+  return (
+    <div style={{overflowX:"auto"}}>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",minWidth:320,fontFamily:"Nunito,sans-serif"}}>
+        {yTicks.map(v=>(
+          <g key={v}>
+            <line x1={PL} y1={yPos(v)} x2={W-PR} y2={yPos(v)} stroke="#f0eaf8" strokeWidth="1"/>
+            <text x={PL-4} y={yPos(v)+4} textAnchor="end" fontSize="9" fill="#aaa">{v}</text>
+          </g>
+        ))}
+        {xTicks.map(i=>(
+          <text key={i} x={xPos(i)} y={H-8} textAnchor="middle" fontSize="9" fill="#aaa">{i}</text>
+        ))}
+        <text x={PL-28} y={PT+chartH/2} textAnchor="middle" fontSize="9" fill="#888" transform={`rotate(-90,${PL-28},${PT+chartH/2})`}>Points</text>
+        <text x={PL+chartW/2} y={H-1} textAnchor="middle" fontSize="9" fill="#888">Matches played</text>
+        {series.map(s=>{
+          const d = s.points.map((v,i)=>`${i===0?"M":"L"}${xPos(i)},${yPos(v)}`).join(" ");
+          return <path key={s.name} d={d} fill="none" stroke={s.color} strokeWidth="1.5" strokeOpacity="0.7" strokeLinejoin="round" strokeLinecap="round"/>;
+        })}
+        {series.map(s=>{
+          const last = s.points[s.points.length-1];
+          return <circle key={s.name} cx={xPos(s.points.length-1)} cy={yPos(last)} r="2.5" fill={s.color} fillOpacity="0.9"/>;
+        })}
+      </svg>
+      <div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:8}}>
+        {series.map((u,i)=>(
+          <div key={u.name} style={{display:"flex",alignItems:"center",gap:4,fontSize:10,fontWeight:600,color:"#555"}}>
+            <div style={{width:12,height:3,borderRadius:2,background:u.color,flexShrink:0}}/>
+            <span>{u.name}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── HOME ─────────────────────────────────────────────────────────────────────
-function HomeView({ closed, setView, leaderboard, results }) {
+function HomeView({ setView, leaderboard, results }) {
   const resultsIn = Object.keys(results).length;
+  const [showAllTeams, setShowAllTeams] = useState(false);
   const teamPts = {};
   ALL_TEAMS.forEach(t=>teamPts[t]=0);
   leaderboard.forEach(u=>{
@@ -293,20 +373,16 @@ function HomeView({ closed, setView, leaderboard, results }) {
   });
   const ranked = Object.entries(teamPts).sort((a,b)=>b[1]-a[1]);
   const max = ranked[0]?.[1]||1;
+  const visibleTeams = showAllTeams ? ranked : ranked.slice(0,5);
 
   return (
     <div>
       <div className="card card-accent">
         <div style={{fontSize:19,fontWeight:800,marginBottom:8,color:"#5c3896"}}>Welcome, Staff! 🌍</div>
         <p style={{fontSize:14,color:"#555",lineHeight:1.65,marginBottom:12}}>
-          Predict the result of all 72 FIFA World Cup 2026 group stage matches. Earn <strong>3 points</strong> for every correct result. Highest score wins!
+          The FIFA World Cup 2026 group stage is underway! Track the leaderboard and fixtures below.
         </p>
-        {closed
-          ? <div className="alert alert-warn">⏰ Submissions are now <strong>closed</strong> — the tournament has begun!</div>
-          : <div className="alert alert-green">✅ Submissions open until <strong>11 June 2026, 7:00 PM BST</strong></div>
-        }
         <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:4}}>
-          {!closed&&<button className="btn" onClick={()=>setView("predict")}>📝 Submit My Predictions</button>}
           <button className="btn btn-green" onClick={()=>setView("leaderboard")}>🏆 View Leaderboard</button>
           <button className="btn btn-orange" onClick={()=>setView("fixtures")}>📅 View Fixtures</button>
         </div>
@@ -320,7 +396,14 @@ function HomeView({ closed, setView, leaderboard, results }) {
           </div>
         ))}
       </div>
-      {leaderboard.length>0&&leaderboard[0].pts>0&&(
+      {leaderboard.length>0&&Object.keys(results).length>0&&(
+        <div className="card">
+          <div className="section-title">📈 Points Progression</div>
+          <div style={{fontSize:12,color:"#6d6e71",marginBottom:12}}>Points accumulated per match result — top 10 shown</div>
+          <ProgressChart leaderboard={leaderboard} results={results}/>
+        </div>
+      )}
+
         <div className="card">
           <div className="section-title">🏆 Top 3</div>
           {leaderboard.slice(0,3).map((u,i)=>(
@@ -336,7 +419,7 @@ function HomeView({ closed, setView, leaderboard, results }) {
         <div className="card">
           <div className="section-title">❤️ Staff's Favourite Teams</div>
           <div style={{fontSize:12,color:"#6d6e71",marginBottom:12}}>Ranked by points — 3pts for 1st choice, 2pts for 2nd, 1pt for 3rd</div>
-          {ranked.map(([team,pts],i)=>(
+          {visibleTeams.map(([team,pts],i)=>(
             <div key={team} style={{display:"flex",alignItems:"center",gap:10,marginBottom:7}}>
               <div style={{width:24,textAlign:"center",fontSize:i<3?16:13,fontWeight:700,color:"#999"}}>
                 {i===0?"🥇":i===1?"🥈":i===2?"🥉":i+1}
@@ -348,175 +431,29 @@ function HomeView({ closed, setView, leaderboard, results }) {
               <div style={{fontSize:12,fontWeight:700,color:pts>0?"#5c3896":"#ccc",minWidth:36,textAlign:"right"}}>{pts}pts</div>
             </div>
           ))}
+          <button onClick={()=>setShowAllTeams(!showAllTeams)} style={{marginTop:8,background:"none",border:"none",color:"#5c3896",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit",padding:0}}>
+            {showAllTeams?"▲ Show less":"▼ Show all 48 teams"}
+          </button>
         </div>
       )}
     </div>
   );
 }
 
-// ─── PREDICT ──────────────────────────────────────────────────────────────────
-function PredictView({ users, saveUser, session, setSession, closed, sessionUser }) {
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
-  const [err, setErr] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [department, setDepartment] = useState("");
-  const [favTeam1, setFavTeam1] = useState(sessionUser?.favourite_team_1||"");
-  const [favTeam2, setFavTeam2] = useState(sessionUser?.favourite_team_2||"");
-  const [favTeam3, setFavTeam3] = useState(sessionUser?.favourite_team_3||"");
-  const [preds, setPreds] = useState(sessionUser?.predictions||{});
-  const [activeGroup, setActiveGroup] = useState("A");
-  const [registered, setRegistered] = useState(!!sessionUser);
-
-  useEffect(() => {
-    if (sessionUser) { setPreds(sessionUser.predictions||{}); setRegistered(true); }
-  }, [sessionUser]);
-
-  const fetchDisplayName = async (e) => {
-    const local = e.split("@")[0];
-    return local.replace(/[._-]/g," ").replace(/\b\w/g,c=>c.toUpperCase()).trim();
-  };
-
-  const handleRegister = async () => {
-    setErr("");
-    const e = email.trim().toLowerCase();
-    if (!e.endsWith("@mulberryschoolstrust.org")) { setErr("Please use your @mulberryschoolstrust.org school email."); return; }
-    const existing = users.find(u=>u.email===e);
-    if (existing?.submitted) { setErr("This email has already submitted predictions."); return; }
-    if (!department) { setErr("Please select your department."); return; }
-    const displayName = await fetchDisplayName(e);
-    setName(displayName);
-    setSession(e);
-    setRegistered(true);
-  };
-
-  const setPred = (fid,val) => setPreds(p=>({...p,[fid]:val}));
-  const total = Object.keys(preds).length;
-  const allDone = total===FIXTURES.length;
-
-  const handleSubmit = async () => {
-    if (!allDone) { setErr(`Please predict all 72 fixtures. You've done ${total}/72.`); return; }
-    setSaving(true);
-    const e = email.trim().toLowerCase()||session;
-    await saveUser({
-      email:e, name:name||sessionUser?.name, user_type:"Staff",
-      department:department||sessionUser?.department,
-      favourite_team_1:favTeam1||sessionUser?.favourite_team_1,
-      favourite_team_2:favTeam2||sessionUser?.favourite_team_2,
-      favourite_team_3:favTeam3||sessionUser?.favourite_team_3,
-      predictions:preds, submitted:true,
-    });
-    setSaving(false);
-  };
-
-  if (closed) return <div className="card card-accent"><div style={{fontSize:18,fontWeight:800,color:"#5c3896",marginBottom:8}}>⏰ Submissions Closed</div><p style={{fontSize:14,color:"#555"}}>The deadline has passed. Check the leaderboard!</p></div>;
-
-  if (sessionUser?.submitted) return (
-    <div className="card" style={{textAlign:"center",padding:"2rem 1.5rem"}}>
-      <div style={{fontSize:40,marginBottom:12}}>✅</div>
-      <div style={{fontSize:20,fontWeight:800,color:"#5c3896",marginBottom:8}}>Predictions Locked In!</div>
-      <p style={{fontSize:14,color:"#555",marginBottom:16}}>Thanks <strong>{sessionUser.name}</strong>! Your 72 predictions are saved.</p>
-      <div className="alert alert-purple">Good luck! 🍀 Check the Fixtures page as results come in.</div>
-    </div>
-  );
-
-  if (!registered) return (
-    <div className="card card-accent">
-      <div className="section-title">📧 Register to Predict</div>
-      <p style={{fontSize:13,color:"#666",marginBottom:14,lineHeight:1.6}}>This competition is open to Mulberry School for Girls staff only. Enter your school email to get started.</p>
-      <input className="input" placeholder="yourname@mulberryschoolstrust.org" value={email} onChange={e=>setEmail(e.target.value)}/>
-      <div style={{fontSize:12,color:"#6d6e71",marginBottom:14,marginTop:-6}}>Your display name will be taken from your email address.</div>
-      <div style={{fontSize:13,fontWeight:700,color:"#5c3896",marginBottom:8}}>Department</div>
-      <select className="input" value={department} onChange={e=>setDepartment(e.target.value)} style={{marginBottom:14}}>
-        <option value="">Select your department...</option>
-        {DEPARTMENTS.map(d=><option key={d} value={d}>{d}</option>)}
-      </select>
-      <div style={{fontSize:13,fontWeight:700,color:"#5c3896",marginBottom:6}}>Favourite teams <span style={{fontWeight:400,color:"#aaa"}}>(pick your top 3)</span></div>
-      <div style={{fontSize:12,color:"#6d6e71",marginBottom:10}}>🥇 3pts · 🥈 2pts · 🥉 1pt — used to rank the staff's favourite teams</div>
-      {[["f1","🥇 1st choice",favTeam1,setFavTeam1],["f2","🥈 2nd choice",favTeam2,setFavTeam2],["f3","🥉 3rd choice",favTeam3,setFavTeam3]].map(([field,label,val,setter],idx)=>{
-        const taken=[favTeam1,favTeam2,favTeam3].filter((_,i)=>i!==idx).filter(Boolean);
-        return (
-          <div key={field} style={{marginBottom:10}}>
-            <div style={{fontSize:12,fontWeight:700,color:"#5c3896",marginBottom:4}}>{label}</div>
-            <select className="input" style={{marginBottom:0}} value={val} onChange={e=>setter(e.target.value)}>
-              <option value="">Select a team...</option>
-              {ALL_TEAMS.filter(t=>!taken.includes(t)).map(t=><option key={t} value={t}>{t}</option>)}
-            </select>
-          </div>
-        );
-      })}
-      <div style={{marginBottom:14}}/>
-      {err&&<div className="err">{err}</div>}
-      <button className="btn" onClick={handleRegister} disabled={saving}>Start Predicting →</button>
-    </div>
-  );
-
-  return (
-    <div>
-      <div className="card">
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
-          <div>
-            <div style={{fontWeight:800,fontSize:15,color:"#5c3896"}}>{sessionUser?.name||name}'s Predictions</div>
-            <div style={{fontSize:13,color:"#6d6e71"}}>{total} of 72 fixtures predicted</div>
-          </div>
-          <div className="pill" style={allDone?{background:"#e8f5e2",color:"#2a6b15"}:{}}>{allDone?"✅ All done!":`${72-total} remaining`}</div>
-        </div>
-        <div className="progress-bar"><div className="progress-fill" style={{width:`${(total/72)*100}%`}}/></div>
-      </div>
-      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
-        {Object.keys(GROUPS).map(g=>{
-          const gf=FIXTURES.filter(f=>f.group===g),done=gf.filter(f=>preds[f.id]).length;
-          return <button key={g} className={`group-tab${activeGroup===g?" active":""}`} onClick={()=>setActiveGroup(g)}>Group {g} {done===gf.length?"✅":`${done}/${gf.length}`}</button>;
-        })}
-      </div>
-      <div className="card">
-        <div className="section-title">Group {activeGroup}</div>
-        {FIXTURES.filter(f=>f.group===activeGroup).map(f=>(
-          <div key={f.id} className="fix-row">
-            <div className="fix-label">{FLAGS[f.home]||"🏳"} {f.home} <span style={{color:"#bbb",margin:"0 6px",fontWeight:400}}>vs</span> {FLAGS[f.away]||"🏳"} {f.away}</div>
-            <div className="pred-btns">
-              {[["H",`${f.home} win`],["D","Draw"],["A",`${f.away} win`]].map(([c,label])=>(
-                <button key={c} className={`pred-btn${preds[f.id]===c?" selected":""}`} onClick={()=>setPred(f.id,c)}>{label}</button>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-      <div style={{marginTop:14}}>
-        {err&&<div className="err">{err}</div>}
-        <button className={`btn${allDone?" btn-green":" btn-gray"}`} onClick={handleSubmit} disabled={!allDone||saving}>
-          {saving?"💾 Saving...":allDone?"🔒 Lock In My Predictions":`Complete all fixtures first (${total}/72)`}
-        </button>
-        <div style={{fontSize:12,color:"#aaa",marginTop:8}}>⚠️ Once submitted, predictions cannot be changed.</div>
-      </div>
-    </div>
-  );
-}
-
 // ─── FIXTURES ─────────────────────────────────────────────────────────────────
 function FixturesView({ results, leaderboard, saveResult }) {
-  const [filter, setFilter] = useState("All");
   const [expandedFixture, setExpandedFixture] = useState(null);
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState("");
-
-  const NAME_MAP = {
-    "Bosnia-Herzegovina": "Bosnia and Herzegovina",
-    "United States": "USA",
-    "Curaçao": "Curacao",
-    "Cape Verde Islands": "Cape Verde",
-    "Congo DR": "DR Congo",
-  };
-
-  const normalise = name => NAME_MAP[name] || name;
+  const [selectedDate, setSelectedDate] = useState(null);
 
   const handleSync = async () => {
     setSyncing(true); setSyncMsg("");
     try {
       const res = await fetch(FUNCTION_URL, {
-        method: "POST",
-        headers: { "Content-Type":"application/json", "Authorization":`Bearer ${SUPABASE_KEY}` },
-        body: JSON.stringify({ action:"sync_results" }),
+        method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":`Bearer ${SUPABASE_KEY}`},
+        body:JSON.stringify({action:"sync_results"}),
       });
       if (!res.ok) { setSyncMsg("❌ API error — please try again later."); setSyncing(false); return; }
       const data = await res.json();
@@ -539,6 +476,13 @@ function FixturesView({ results, leaderboard, saveResult }) {
 
   const byDate={};
   FIXTURES.forEach(f=>{if(!byDate[f.date])byDate[f.date]=[];byDate[f.date].push(f);});
+  const dates = Object.keys(byDate).sort();
+
+  const formatDate = s => new Date(s+"T12:00:00Z").toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+  const formatShort = s => {
+    const d = new Date(s+"T12:00:00Z");
+    return { day: d.toLocaleDateString("en-GB",{weekday:"short"}), date: d.getDate(), month: d.toLocaleDateString("en-GB",{month:"short"}) };
+  };
 
   const getPredStats = fid => {
     let h=0,d=0,a=0; const hUsers=[],dUsers=[],aUsers=[];
@@ -551,31 +495,56 @@ function FixturesView({ results, leaderboard, saveResult }) {
     return {h,d,a,total:h+d+a,hUsers,dUsers,aUsers};
   };
 
-  const formatDate = s => new Date(s+"T12:00:00Z").toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
-  const dates = Object.keys(byDate).sort();
-  const filteredDates = filter==="All"?dates:dates.filter(d=>byDate[d].some(f=>f.group===filter));
+  const scrollToDate = (date) => {
+    setSelectedDate(date);
+    setTimeout(() => {
+      const el = document.getElementById(`date-${date}`);
+      if (el) el.scrollIntoView({ behavior:"smooth", block:"start" });
+    }, 50);
+  };
+
+  const hasResult = date => byDate[date]?.some(f => results[f.id]);
 
   return (
     <div>
       <div className="card" style={{marginBottom:12}}>
         <div className="section-title" style={{marginBottom:8}}>📅 Group Stage Fixtures</div>
         <p style={{fontSize:13,color:"#666",marginBottom:12}}>All times in BST. Tap a fixture to see who predicted what.</p>
-        <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12,flexWrap:"wrap"}}>
+        <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:14,flexWrap:"wrap"}}>
           <button className="btn btn-green" style={{fontSize:13,padding:"8px 16px"}} onClick={handleSync} disabled={syncing}>{syncing?"⏳ Syncing...":"🔄 Sync Results"}</button>
           {syncMsg&&<span style={{fontSize:12,color:syncMsg.startsWith("✅")?"#4e9d2d":"#c0392b",fontWeight:600}}>{syncMsg}</span>}
         </div>
-        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-          <button className={`group-tab${filter==="All"?" active":""}`} onClick={()=>setFilter("All")}>All Groups</button>
-          {Object.keys(GROUPS).map(g=>(
-            <button key={g} className={`group-tab${filter===g?" active":""}`} onClick={()=>setFilter(g)}>Group {g}</button>
-          ))}
+
+        {/* Calendar strip */}
+        <div style={{overflowX:"auto",paddingBottom:4}}>
+          <div style={{display:"flex",gap:6,minWidth:"max-content"}}>
+            {dates.map(date=>{
+              const {day,date:d,month} = formatShort(date);
+              const active = selectedDate===date;
+              const done = hasResult(date);
+              return (
+                <button key={date} onClick={()=>scrollToDate(date)} style={{
+                  display:"flex",flexDirection:"column",alignItems:"center",
+                  padding:"6px 10px",borderRadius:10,border:`1.5px solid ${active?"#5c3896":done?"#4e9d2d":"#d4c8e8"}`,
+                  background:active?"#5c3896":done?"#e8f5e2":"#fff",
+                  color:active?"#fff":done?"#2a6b15":"#555",
+                  cursor:"pointer",fontFamily:"inherit",minWidth:46,
+                }}>
+                  <span style={{fontSize:10,fontWeight:700,textTransform:"uppercase",opacity:.8}}>{day}</span>
+                  <span style={{fontSize:18,fontWeight:800,lineHeight:1.2}}>{d}</span>
+                  <span style={{fontSize:10,fontWeight:600,opacity:.8}}>{month}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
-      {filteredDates.map(date=>{
-        const dayF=byDate[date].filter(f=>filter==="All"||f.group===filter);
+
+      {dates.map(date=>{
+        const dayF=byDate[date];
         if(!dayF.length) return null;
         return (
-          <div key={date}>
+          <div key={date} id={`date-${date}`}>
             <div className="date-header">📆 {formatDate(date)}</div>
             {dayF.map(f=>{
               const res=results[f.id], stats=getPredStats(f.id), isExpanded=expandedFixture===f.id;
@@ -602,7 +571,7 @@ function FixturesView({ results, leaderboard, saveResult }) {
                         Predictions — {stats.total} staff
                         {res&&<span style={{marginLeft:8,color:"#4e9d2d"}}>· {res==="H"?stats.h:res==="D"?stats.d:stats.a} correct ({Math.round(((res==="H"?stats.h:res==="D"?stats.d:stats.a)/stats.total)*100)}%)</span>}
                       </div>
-                      {[["H",f.home,stats.h,stats.hUsers,"#5c3896"],["D","Draw",stats.d,stats.dUsers,"#f36d21"],["A",f.away,stats.a,stats.aUsers,"#4e9d2d"]].map(([code,label,count,names,color])=>{
+                      {[["H",f.home,stats.h,stats.hUsers,"#5c3896"],["D","Draw",stats.d,stats.dUsers,"#f36d21"],["A",f.away,stats.a,stats.aUsers,"#42b4e5"]].map(([code,label,count,names,color])=>{
                         const pct=stats.total>0?Math.round((count/stats.total)*100):0, correct=res&&res===code;
                         return (
                           <div key={code} style={{marginBottom:isExpanded?8:3}}>
@@ -766,19 +735,19 @@ function AdminView({ results, saveResult, adminMode, setAdminMode, users, saveUs
     setSyncing(true); setSyncMsg("");
     try {
       const res = await fetch(FUNCTION_URL, {
-        method: "POST",
-        headers: { "Content-Type":"application/json", "Authorization":`Bearer ${SUPABASE_KEY}` },
-        body: JSON.stringify({ action:"sync_results" }),
+        method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":`Bearer ${SUPABASE_KEY}`},
+        body:JSON.stringify({action:"sync_results"}),
       });
       if (!res.ok) { setSyncMsg("❌ API error — please try again later."); setSyncing(false); return; }
       const data = await res.json();
       const matches = data.matches||[];
       let updated = 0;
       for (const match of matches) {
-        const home=match.homeTeam?.name, away=match.awayTeam?.name;
+        const home=normalise(match.homeTeam?.name), away=normalise(match.awayTeam?.name);
         const homeGoals=match.score?.fullTime?.home, awayGoals=match.score?.fullTime?.away;
         if (!home||!away||homeGoals===null||awayGoals===null) continue;
-        const fixture = FIXTURES.find(f=>f.home.toLowerCase()===home.toLowerCase()||f.away.toLowerCase()===away.toLowerCase());
+        const fixture = FIXTURES.find(f=>f.home===home&&f.away===away);
         if (!fixture) continue;
         const result = homeGoals>awayGoals?"H":awayGoals>homeGoals?"A":"D";
         await saveResult(fixture.id, result);
